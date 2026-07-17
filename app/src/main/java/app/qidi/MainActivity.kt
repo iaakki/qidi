@@ -16,6 +16,7 @@ class MainActivity : Activity() {
     private var newProcessMethod: Method? = null
 
     private val protectedPackages = listOf(
+        "app.qidi",
         "dev.shadoe.delta",
         "io.homeassistant.companion.android",
         "com.assaabloy.yale",
@@ -45,7 +46,7 @@ class MainActivity : Activity() {
         }
 
         val traceButton = Button(this).apply {
-            text = "Trace Delta"
+            text = "Check Delta Status"
             setOnClickListener { tracePackage("dev.shadoe.delta") }
         }
 
