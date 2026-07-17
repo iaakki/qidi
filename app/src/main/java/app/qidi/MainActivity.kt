@@ -1,10 +1,11 @@
 package app.qidi
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
-import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.Button
@@ -13,28 +14,17 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import rikka.shizuku.Shizuku
-import java.lang.reflect.Method
 
 class MainActivity : Activity() {
     private lateinit var output: TextView
     private lateinit var appListContainer: LinearLayout
-    private lateinit var preferences: SharedPreferences
-    private var newProcessMethod: Method? = null
-
-    private val defaultProtectedPackages = setOf(
-        "app.qidi",
-        "dev.shadoe.delta",
-        "io.homeassistant.companion.android",
-        "com.assaabloy.yale",
-        "com.life360.android.safetymapd"
-    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        preferences = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
         setContentView(buildLayout())
+        requestNotificationPermissionIfNeeded()
         renderAppPicker()
-        renderStatus("Qidi ready. Choose apps, then apply protections or check status.")
+        renderStatus("Qidi ready. Choose apps, apply protections, then start the watchdog.")
     }
 
     private fun buildLayout(): ScrollView {
@@ -56,6 +46,21 @@ class MainActivity : Activity() {
         val checkStatusButton = Button(this).apply {
             text = "Check Selected Status"
             setOnClickListener { traceSelectedPackages() }
+        }
+
+        val startWatchdogButton = Button(this).apply {
+            text = "Start Watchdog"
+            setOnClickListener { startWatchdog() }
+        }
+
+        val stopWatchdogButton = Button(this).apply {
+            text = "Stop Watchdog"
+            setOnClickListener { stopWatchdog() }
+        }
+
+        val watchdogStatusButton = Button(this).apply {
+            text = "Show Watchdog Status"
+            setOnClickListener { renderStatus(QidiSettings.watchdogStatus(this@MainActivity)) }
         }
 
         val refreshButton = Button(this).apply {
@@ -80,6 +85,9 @@ class MainActivity : Activity() {
             addView(checkShizukuButton)
             addView(protectButton)
             addView(checkStatusButton)
+            addView(startWatchdogButton)
+            addView(stopWatchdogButton)
+            addView(watchdogStatusButton)
             addView(refreshButton)
             addView(output)
             addView(TextView(context).apply {
@@ -115,6 +123,20 @@ class MainActivity : Activity() {
         renderStatus(message)
     }
 
+    private fun startWatchdog() {
+        if (!ensureShizukuPermission()) return
+        QidiSettings.setWatchdogEnabled(this, true)
+        val intent = Intent(this, QidiWatchdogService::class.java).setAction(QidiWatchdogService.ACTION_START)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
+        renderStatus("Watchdog started. Qidi will restart selected apps up to 3 times per minute per app.")
+    }
+
+    private fun stopWatchdog() {
+        QidiSettings.setWatchdogEnabled(this, false)
+        startService(Intent(this, QidiWatchdogService::class.java).setAction(QidiWatchdogService.ACTION_STOP))
+        renderStatus("Watchdog stopped.")
+    }
+
     private fun applyProtections() {
         if (!ensureShizukuPermission()) return
 
@@ -127,7 +149,7 @@ class MainActivity : Activity() {
         val log = StringBuilder()
         packages.forEach { packageName ->
             log.appendLine("== $packageName ==")
-            protectionCommands(packageName).forEach { command ->
+            QidiCommands.protectionCommands(packageName).forEach { command ->
                 log.appendLine("$ $command")
                 log.appendLine(runShell(command).trim())
             }
@@ -156,12 +178,12 @@ class MainActivity : Activity() {
 
     private fun tracePackageStatus(packageName: String): String {
         val commands = listOf(
-            "pidof $packageName || true",
-            "cmd deviceidle whitelist | grep -F $packageName || true",
-            "am get-standby-bucket $packageName",
-            "cmd appops get $packageName | grep -E 'RUN|SCHEDULE|FOREGROUND|POST_NOTIFICATION' || true",
-            "dumpsys package $packageName | grep -E 'stopped=|enabled=|suspended='",
-            "dumpsys activity exit-info $packageName | sed -n '1,90p'",
+            "pidof ${ShizukuShell.quote(packageName)} || true",
+            "cmd deviceidle whitelist | grep -F ${ShizukuShell.quote(packageName)} || true",
+            "am get-standby-bucket ${ShizukuShell.quote(packageName)}",
+            "cmd appops get ${ShizukuShell.quote(packageName)} | grep -E 'RUN|SCHEDULE|FOREGROUND|POST_NOTIFICATION' || true",
+            "dumpsys package ${ShizukuShell.quote(packageName)} | grep -E 'stopped=|enabled=|suspended='",
+            "dumpsys activity exit-info ${ShizukuShell.quote(packageName)} | sed -n '1,90p'",
             "logcat -b events -d -v threadtime | grep -E 'am_kill|am_proc_died|am_uid_stopped|am_force_stop' | tail -n 80"
         )
 
@@ -233,22 +255,12 @@ class MainActivity : Activity() {
     }
 
     private fun selectedProtectedPackages(): Set<String> {
-        val savedPackages = preferences.getStringSet(PROTECTED_PACKAGES_KEY, null)
-        return ((savedPackages ?: defaultProtectedPackages) + packageName).toSortedSet()
+        return QidiSettings.selectedProtectedPackages(this)
     }
 
     private fun saveProtectedPackages(packages: Set<String>) {
-        preferences.edit().putStringSet(PROTECTED_PACKAGES_KEY, packages + packageName).apply()
+        QidiSettings.saveProtectedPackages(this, packages)
     }
-
-    private fun protectionCommands(packageName: String): List<String> = listOf(
-        "cmd deviceidle whitelist +$packageName",
-        "am set-standby-bucket $packageName active",
-        "cmd appops set $packageName RUN_ANY_IN_BACKGROUND allow",
-        "cmd appops set $packageName RUN_IN_BACKGROUND allow",
-        "cmd appops set $packageName START_FOREGROUND allow",
-        "cmd appops set $packageName SCHEDULE_EXACT_ALARM allow"
-    )
 
     private fun ensureShizukuPermission(): Boolean {
         if (!Shizuku.pingBinder()) {
@@ -263,48 +275,24 @@ class MainActivity : Activity() {
     }
 
     private fun runShell(command: String): String {
-        return try {
-            val process = createShizukuProcess(arrayOf("sh", "-c", command))
-            val stdout = process.inputStream.bufferedReader().readText()
-            val stderr = process.errorStream.bufferedReader().readText()
-            val exitCode = process.waitFor()
-            buildString {
-                appendLine("exit=$exitCode")
-                if (stdout.isNotBlank()) appendLine(stdout.trim())
-                if (stderr.isNotBlank()) appendLine(stderr.trim())
-            }
-        } catch (error: Throwable) {
-            buildString {
-                appendLine("exit=-1")
-                appendLine(error.stackTraceToString())
-            }
-        }
-    }
-
-    private fun createShizukuProcess(command: Array<String>): Process {
-        val method = newProcessMethod ?: Shizuku::class.java
-            .getDeclaredMethod(
-                "newProcess",
-                Array<String>::class.java,
-                Array<String>::class.java,
-                String::class.java
-            )
-            .also {
-                it.isAccessible = true
-                newProcessMethod = it
-            }
-
-        return method.invoke(null, command, null, null) as Process
+        return ShizukuShell.run(command).format()
     }
 
     private fun renderStatus(message: String) {
         output.text = message
     }
 
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), NOTIFICATION_PERMISSION_REQUEST)
+        }
+    }
+
     companion object {
         private const val SHIZUKU_PERMISSION_REQUEST = 1001
-        private const val PREFERENCES_NAME = "qidi"
-        private const val PROTECTED_PACKAGES_KEY = "protected_packages"
+        private const val NOTIFICATION_PERMISSION_REQUEST = 1002
     }
 
     private data class PickerApp(
