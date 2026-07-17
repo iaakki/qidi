@@ -1,0 +1,24 @@
+.gradle/
+build/
+app/build/
+.idea/
+.vscode/
+local.properties
+*.iml
+archive/
+
+# Local investigation artifacts and binaries from the phone analysis
+QIDIStudio_v02.06.00.51_Ubuntu24.AppImage
+backups/
+apk-analysis/
+*.apk
+*.dex
+*_dump.txt
+otb_*.txt
+otb-components*.txt
+otb_manifest.xml
+installed-packages*.txt
+tcl-packages*.txt
+smartmanager-*.txt
+delta-*.txt
+pid-oem-processes-*.txt
