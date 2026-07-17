@@ -1,8 +1,11 @@
 package app.qidi
 
 import android.app.Activity
+import android.content.ComponentName
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.IBinder
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
@@ -12,6 +15,7 @@ import rikka.shizuku.Shizuku
 
 class MainActivity : Activity() {
     private lateinit var output: TextView
+    private var shellService: IQidiShellService? = null
 
     private val protectedPackages = listOf(
         "dev.shadoe.delta",
@@ -24,6 +28,11 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(buildLayout())
         renderStatus("Qidi ready. Connect Shizuku, then check or apply protections.")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        shellService = null
     }
 
     private fun buildLayout(): ScrollView {
@@ -74,7 +83,10 @@ class MainActivity : Activity() {
     private fun checkShizuku() {
         val message = when {
             !Shizuku.pingBinder() -> "Shizuku binder is not available."
-            Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED -> "Shizuku permission granted."
+            Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED -> {
+                bindShellService()
+                "Shizuku permission granted. Binding shell service."
+            }
             else -> {
                 Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST)
                 "Requested Shizuku permission."
@@ -84,17 +96,14 @@ class MainActivity : Activity() {
     }
 
     private fun applyProtections() {
-        if (!ensureShizukuPermission()) return
+        if (!ensureShellService()) return
 
         val log = StringBuilder()
         protectedPackages.forEach { packageName ->
             log.appendLine("== $packageName ==")
             protectionCommands(packageName).forEach { command ->
-                val result = runShell(command)
                 log.appendLine("$ $command")
-                log.appendLine("exit=${result.exitCode}")
-                if (result.stdout.isNotBlank()) log.appendLine(result.stdout.trim())
-                if (result.stderr.isNotBlank()) log.appendLine(result.stderr.trim())
+                log.appendLine(runShell(command).trim())
             }
             log.appendLine()
         }
@@ -102,7 +111,7 @@ class MainActivity : Activity() {
     }
 
     private fun tracePackage(packageName: String) {
-        if (!ensureShizukuPermission()) return
+        if (!ensureShellService()) return
 
         val commands = listOf(
             "pidof $packageName || true",
@@ -113,11 +122,8 @@ class MainActivity : Activity() {
 
         val log = StringBuilder()
         commands.forEach { command ->
-            val result = runShell(command)
             log.appendLine("$ $command")
-            log.appendLine("exit=${result.exitCode}")
-            if (result.stdout.isNotBlank()) log.appendLine(result.stdout.trim())
-            if (result.stderr.isNotBlank()) log.appendLine(result.stderr.trim())
+            log.appendLine(runShell(command).trim())
             log.appendLine()
         }
         renderStatus(log.toString())
@@ -144,27 +150,42 @@ class MainActivity : Activity() {
         return false
     }
 
-    private fun runShell(command: String): CommandResult {
-        return try {
-            val process = Shizuku.newProcess(arrayOf("sh", "-c", command), null, null)
-            val stdout = process.inputStream.bufferedReader().readText()
-            val stderr = process.errorStream.bufferedReader().readText()
-            val exitCode = process.waitFor()
-            CommandResult(exitCode, stdout, stderr)
-        } catch (error: Throwable) {
-            CommandResult(-1, "", error.stackTraceToString())
+    private fun ensureShellService(): Boolean {
+        if (!ensureShizukuPermission()) return false
+        if (shellService != null) return true
+
+        bindShellService()
+        renderStatus("Binding Shizuku shell service. Try again in a moment.")
+        return false
+    }
+
+    private fun bindShellService() {
+        val args = Shizuku.UserServiceArgs(ComponentName(this, QidiShellService::class.java))
+            .daemon(false)
+            .processNameSuffix("shell")
+            .debuggable(BuildConfig.DEBUG)
+            .version(1)
+
+        Shizuku.bindUserService(args, shellConnection)
+    }
+
+    private val shellConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName, service: IBinder) {
+            shellService = IQidiShellService.Stub.asInterface(service)
+            renderStatus("Shizuku shell service connected.")
+        }
+
+        override fun onServiceDisconnected(name: ComponentName) {
+            shellService = null
+            renderStatus("Shizuku shell service disconnected.")
         }
     }
+
+    private fun runShell(command: String): String = shellService?.run(command) ?: "exit=-1\nShell service is not connected."
 
     private fun renderStatus(message: String) {
         output.text = message
     }
-
-    private data class CommandResult(
-        val exitCode: Int,
-        val stdout: String,
-        val stderr: String
-    )
 
     companion object {
         private const val SHIZUKU_PERMISSION_REQUEST = 1001
