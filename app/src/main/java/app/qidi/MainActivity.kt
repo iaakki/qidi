@@ -2,6 +2,7 @@ package app.qidi
 
 import android.Manifest
 import android.app.Activity
+import android.app.ActivityManager
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -23,6 +24,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(buildLayout())
         requestNotificationPermissionIfNeeded()
+        resumeWatchdogIfEnabled()
         renderCurrentView()
     }
 
@@ -75,7 +77,7 @@ class MainActivity : Activity() {
     private fun renderDashboard(message: String?) {
         addSectionTitle("Watchdog")
         addStatusLine("Shizuku", shizukuStatus())
-        addStatusLine("Watchdog", if (QidiSettings.isWatchdogEnabled(this)) "Running" else "Stopped")
+        addStatusLine("Watchdog", watchdogStatusLabel())
         addStatusLine("Selected apps", selectedProtectedPackages().size.toString())
 
         content.addView(actionButton("Start Watchdog") { startWatchdog() })
@@ -116,6 +118,14 @@ class MainActivity : Activity() {
     private fun renderTerminations(message: String?) {
         addSectionTitle("Recent Terminations")
         if (message != null) addBody(message)
+        addSectionTitle("Qidi Events")
+        content.addView(actionButton("Clear Qidi Log") {
+            QidiEventLog.clear(this)
+            renderCurrentView("Qidi log cleared.")
+        })
+        addBody(recentQidiEventsSummary())
+
+        addSectionTitle("Android Exit Info")
         content.addView(actionButton("Refresh Terminations") { refreshTerminations() })
         addBody(recentTerminationsSummary())
     }
@@ -135,7 +145,9 @@ class MainActivity : Activity() {
     private fun startWatchdog() {
         if (!ensureShizukuPermission()) return
         QidiSettings.setWatchdogEnabled(this, true)
-        val intent = Intent(this, QidiWatchdogService::class.java).setAction(QidiWatchdogService.ACTION_START)
+        val intent = Intent(this, QidiWatchdogService::class.java)
+            .setAction(QidiWatchdogService.ACTION_START)
+            .putExtra(QidiWatchdogService.EXTRA_RECOVER_NOW, true)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
         renderCurrentView("Watchdog started. Selected stopped apps will be restarted, up to 3 times per minute per app.")
     }
@@ -174,6 +186,12 @@ class MainActivity : Activity() {
         if (!ensureShizukuPermission()) return
         currentView = ViewMode.TERMINATIONS
         renderCurrentView("Termination list refreshed.")
+    }
+
+    private fun recentQidiEventsSummary(): String {
+        val events = QidiEventLog.recent(this)
+        if (events.isEmpty()) return "No Qidi events recorded yet."
+        return events.joinToString("\n")
     }
 
     private fun recentTerminationsSummary(): String {
@@ -286,6 +304,31 @@ class MainActivity : Activity() {
             !Shizuku.pingBinder() -> "Unavailable"
             Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED -> "Ready"
             else -> "Permission needed"
+        }
+    }
+
+    private fun watchdogStatusLabel(): String {
+        val enabled = QidiSettings.isWatchdogEnabled(this)
+        val running = isWatchdogServiceRunning()
+        return when {
+            running -> "Running"
+            enabled -> "Enabled; restarting service"
+            else -> "Stopped"
+        }
+    }
+
+    private fun resumeWatchdogIfEnabled() {
+        if (!QidiSettings.isWatchdogEnabled(this) || isWatchdogServiceRunning()) return
+        QidiEventLog.append(this, "Watchdog was enabled but service was not running; restarting from UI open.")
+        val intent = Intent(this, QidiWatchdogService::class.java).setAction(QidiWatchdogService.ACTION_START)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
+    }
+
+    private fun isWatchdogServiceRunning(): Boolean {
+        val activityManager = getSystemService(ActivityManager::class.java)
+        @Suppress("DEPRECATION")
+        return activityManager.getRunningServices(Int.MAX_VALUE).any { serviceInfo ->
+            serviceInfo.service.className == QidiWatchdogService::class.java.name
         }
     }
 

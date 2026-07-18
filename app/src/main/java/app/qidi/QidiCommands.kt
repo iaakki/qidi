@@ -26,6 +26,15 @@ object QidiCommands {
             "activity=\$(cmd package resolve-activity --brief -a android.intent.action.MAIN " +
             "-c android.intent.category.LAUNCHER -p $packageArg 2>/dev/null | tail -n 1); " +
             "if [ -n \"\$activity\" ] && [ \"\$activity\" != \"No activity found\" ]; then " +
-            "am start --user 0 -n \"\$activity\"; else monkey -p $packageArg 1; fi; fi"
+            "am start -W --user 0 -n \"\$activity\"; else monkey -p $packageArg 1; fi; fi"
+    }
+
+    fun isPackageFocusedCommand(packageName: String): String {
+        val packageArg = ShizukuShell.quote(packageName)
+        return "dumpsys window | grep -E 'mCurrentFocus|mFocusedApp' | grep -F $packageArg >/dev/null && echo true || echo false"
+    }
+
+    fun startQidiCommand(packageName: String): String {
+        return "am start -W --user 0 -n ${ShizukuShell.quote("$packageName/.MainActivity")} >/dev/null 2>&1 || true"
     }
 }
