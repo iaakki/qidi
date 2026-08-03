@@ -121,9 +121,13 @@ class MainActivity : Activity() {
         addSectionTitle("Qidi Events")
         content.addView(actionButton("Clear Qidi Log") {
             QidiEventLog.clear(this)
+            QidiFieldLog.clear(this)
             renderCurrentView("Qidi log cleared.")
         })
         addBody(recentQidiEventsSummary())
+
+        addSectionTitle("Field Log")
+        addBody(recentFieldEventsSummary())
 
         addSectionTitle("Android Exit Info")
         content.addView(actionButton("Refresh Terminations") { refreshTerminations() })
@@ -145,6 +149,7 @@ class MainActivity : Activity() {
     private fun startWatchdog() {
         if (!ensureShizukuPermission()) return
         QidiSettings.setWatchdogEnabled(this, true)
+        QidiWatchdogScheduler.scheduleRecoveryAlarm(this)
         val intent = Intent(this, QidiWatchdogService::class.java)
             .setAction(QidiWatchdogService.ACTION_START)
             .putExtra(QidiWatchdogService.EXTRA_RECOVER_NOW, true)
@@ -154,6 +159,7 @@ class MainActivity : Activity() {
 
     private fun stopWatchdog() {
         QidiSettings.setWatchdogEnabled(this, false)
+        QidiWatchdogScheduler.cancelRecoveryAlarm(this)
         startService(Intent(this, QidiWatchdogService::class.java).setAction(QidiWatchdogService.ACTION_STOP))
         renderCurrentView("Watchdog stopped.")
     }
@@ -191,6 +197,12 @@ class MainActivity : Activity() {
     private fun recentQidiEventsSummary(): String {
         val events = QidiEventLog.recent(this)
         if (events.isEmpty()) return "No Qidi events recorded yet."
+        return events.joinToString("\n")
+    }
+
+    private fun recentFieldEventsSummary(): String {
+        val events = QidiFieldLog.recent(this)
+        if (events.isEmpty()) return "No field events recorded yet."
         return events.joinToString("\n")
     }
 
@@ -284,6 +296,7 @@ class MainActivity : Activity() {
     private fun selectedProtectedPackages(): Set<String> = QidiSettings.selectedProtectedPackages(this)
 
     private fun saveProtectedPackages(packages: Set<String>) {
+        QidiFieldLog.append(this, "selected-apps ${packages.toSortedSet().joinToString()}")
         QidiSettings.saveProtectedPackages(this, packages)
     }
 
@@ -320,6 +333,7 @@ class MainActivity : Activity() {
     private fun resumeWatchdogIfEnabled() {
         if (!QidiSettings.isWatchdogEnabled(this) || isWatchdogServiceRunning()) return
         QidiEventLog.append(this, "Watchdog was enabled but service was not running; restarting from UI open.")
+        QidiWatchdogScheduler.scheduleRecoveryAlarm(this)
         val intent = Intent(this, QidiWatchdogService::class.java).setAction(QidiWatchdogService.ACTION_START)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
     }

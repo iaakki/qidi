@@ -6,9 +6,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-object QidiEventLog {
-    private const val FILE_NAME = "qidi-events.log"
-    private const val MAX_LINES = 1_000
+object QidiFieldLog {
+    private const val FILE_NAME = "qidi-field-events.log"
+    private const val MAX_LINES = 2_000
     private val timestampFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
 
     fun append(context: Context, event: String) {
@@ -18,7 +18,7 @@ object QidiEventLog {
         file.writeText((lines + line).takeLast(MAX_LINES).joinToString("\n", postfix = "\n"))
     }
 
-    fun recent(context: Context, count: Int = 20): List<String> {
+    fun recent(context: Context, count: Int = 40): List<String> {
         val file = logFile(context)
         if (!file.exists()) return emptyList()
         return file.readLines().takeLast(count).asReversed()

@@ -12,6 +12,7 @@ class QidiBootReceiver : BroadcastReceiver() {
         if (action != Intent.ACTION_BOOT_COMPLETED && action != Intent.ACTION_MY_PACKAGE_REPLACED) return
 
         QidiEventLog.append(context, "Watchdog resume requested after $action.")
+    QidiWatchdogScheduler.scheduleRecoveryAlarm(context)
         val serviceIntent = Intent(context, QidiWatchdogService::class.java).setAction(QidiWatchdogService.ACTION_START)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(serviceIntent) else context.startService(serviceIntent)
     }

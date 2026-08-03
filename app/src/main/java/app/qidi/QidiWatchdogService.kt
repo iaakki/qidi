@@ -24,8 +24,12 @@ class QidiWatchdogService : Service() {
     private lateinit var executor: ScheduledExecutorService
     private var watchdogTask: ScheduledFuture<*>? = null
     private var lastImmediateCheckAt = 0L
+    private var lastHeartbeatAt = 0L
+    private var lastSentinelEnsureAt = 0L
+    private var lastLoggedStatus: String? = null
     private val restartHistory = mutableMapOf<String, ArrayDeque<Long>>()
     private val lastKnownRunning = mutableMapOf<String, Boolean>()
+    private val lastLoggedState = mutableMapOf<String, String>()
 
     override fun onCreate() {
         super.onCreate()
@@ -43,7 +47,9 @@ class QidiWatchdogService : Service() {
         val recoverNow = intent?.getBooleanExtra(EXTRA_RECOVER_NOW, false) == true
         QidiSettings.setWatchdogEnabled(this, true)
         startInForeground("Watching selected apps")
+        QidiWatchdogScheduler.scheduleRecoveryAlarm(this)
         QidiEventLog.append(this, "Watchdog service started.")
+        QidiFieldLog.append(this, "watchdog-start selected=${QidiSettings.selectedProtectedPackages(this).joinToString()}")
         if (executor.isShutdown) executor = Executors.newSingleThreadScheduledExecutor()
         if (watchdogTask?.isDone != false) {
             watchdogTask = executor.scheduleWithFixedDelay(
@@ -65,12 +71,15 @@ class QidiWatchdogService : Service() {
     override fun onDestroy() {
         watchdogTask?.cancel(true)
         executor.shutdownNow()
+        if (QidiSettings.isWatchdogEnabled(this)) QidiWatchdogScheduler.scheduleRecoveryAlarm(this)
         QidiEventLog.append(this, "Watchdog service destroyed.")
         super.onDestroy()
     }
 
     private fun stopWatchdog() {
         QidiSettings.setWatchdogEnabled(this, false)
+        ShizukuShell.run(QidiCommands.stopSentinelCommand())
+        QidiWatchdogScheduler.cancelRecoveryAlarm(this)
         QidiSettings.setWatchdogStatus(this, "Watchdog stopped at ${timestamp()}.")
         QidiEventLog.append(this, "Watchdog stopped by user.")
         watchdogTask?.cancel(true)
@@ -84,21 +93,26 @@ class QidiWatchdogService : Service() {
         if (!QidiSettings.isWatchdogEnabled(this)) return
 
         if (!Shizuku.pingBinder()) {
-            updateStatus("Watchdog waiting: Shizuku binder is not available.")
+            updateStatus("Watchdog waiting: Shizuku binder is not available.", recordEvent = true)
             return
         }
         if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
-            updateStatus("Watchdog waiting: Shizuku permission is not granted.")
+            updateStatus("Watchdog waiting: Shizuku permission is not granted.", recordEvent = true)
             return
         }
+
+        QidiCommands.protectionCommands(packageName).forEach { command -> ShizukuShell.run(command) }
+        ensureShellSentinel()
 
         val packages = QidiSettings.selectedProtectedPackages(this)
             .filter { packageName -> packageName != this.packageName && packageName.isValidPackageName() }
 
         if (packages.isEmpty()) {
-            updateStatus("Watchdog running: no restartable apps selected.")
+            updateStatus("Watchdog running: no restartable apps selected.", recordEvent = true)
             return
         }
+
+        recordHeartbeat(packages)
 
         val restarted = mutableListOf<String>()
         val limited = mutableListOf<String>()
@@ -110,8 +124,11 @@ class QidiWatchdogService : Service() {
             val state = ShizukuShell.run(QidiCommands.processStateCommand(packageName)).stdout.trim()
             if (state == "running") {
                 lastKnownRunning[packageName] = true
+                recordStateChange(packageName, state)
                 return@forEach
             }
+
+            recordStateChange(packageName, state)
 
             val shouldRestart = recoverNow || state == "stopped" || lastKnownRunning[packageName] == true
             if (!shouldRestart) {
@@ -122,10 +139,12 @@ class QidiWatchdogService : Service() {
             if (!recordRestartAttempt(packageName)) {
                 limited.add(packageName)
                 QidiEventLog.append(this, "Rate limited restart for $packageName.")
+                recordIncident(packageName, state, "rate-limited")
                 return@forEach
             }
 
             QidiEventLog.append(this, "Restarting $packageName after state=$state.")
+            recordIncident(packageName, state, "restart-attempt")
             QidiCommands.protectionCommands(packageName).forEach { command -> ShizukuShell.run(command) }
             ShizukuShell.run(QidiCommands.restartCommand(packageName))
             val updatedState = ShizukuShell.run(QidiCommands.processStateCommand(packageName)).stdout.trim()
@@ -133,11 +152,13 @@ class QidiWatchdogService : Service() {
                 restarted.add(packageName)
                 lastKnownRunning[packageName] = true
                 QidiEventLog.append(this, "Restarted $packageName.")
+                recordIncident(packageName, updatedState, "restart-success")
                 if (qidiWasForeground) ShizukuShell.run(QidiCommands.startQidiCommand(this.packageName))
             } else {
                 failed.add(packageName)
                 lastKnownRunning[packageName] = false
                 QidiEventLog.append(this, "Failed to restart $packageName; state=$updatedState.")
+                recordIncident(packageName, updatedState, "restart-failed")
             }
         }
 
@@ -149,7 +170,41 @@ class QidiWatchdogService : Service() {
             if (limited.isNotEmpty()) append(" Rate limited: ${limited.joinToString()}.")
             if (failed.isNotEmpty()) append(" Failed: ${failed.joinToString()}.")
         }
-        updateStatus(status)
+        updateStatus(status, recordEvent = recoverNow || restarted.isNotEmpty() || limited.isNotEmpty() || failed.isNotEmpty())
+    }
+
+    private fun recordHeartbeat(packages: List<String>) {
+        val now = System.currentTimeMillis()
+        if (now - lastHeartbeatAt < HEARTBEAT_INTERVAL_MS) return
+        lastHeartbeatAt = now
+        QidiFieldLog.append(this, "heartbeat watchdog-running selected=${packages.joinToString()}")
+    }
+
+    private fun ensureShellSentinel() {
+        val now = System.currentTimeMillis()
+        if (now - lastSentinelEnsureAt < SENTINEL_ENSURE_INTERVAL_MS) return
+        lastSentinelEnsureAt = now
+
+        val result = ShizukuShell.run(QidiCommands.startSentinelCommand(packageName))
+        val detail = result.format().compactForLog()
+        QidiFieldLog.append(this, "shell-sentinel-ensure $detail")
+    }
+
+    private fun recordStateChange(packageName: String, state: String) {
+        val previousState = lastLoggedState.put(packageName, state)
+        if (previousState != null && previousState != state) {
+            QidiFieldLog.append(this, "state-change package=$packageName previous=$previousState current=$state")
+        }
+    }
+
+    private fun recordIncident(packageName: String, state: String, action: String) {
+        val packageState = ShizukuShell.run(QidiCommands.packageStateCommand(packageName)).stdout.compactForLog()
+        val standbyBucket = ShizukuShell.run("am get-standby-bucket ${ShizukuShell.quote(packageName)} 2>/dev/null").stdout.compactForLog()
+        val exitInfo = ShizukuShell.run(QidiCommands.recentExitInfoCommand(packageName)).stdout.compactForLog()
+        QidiFieldLog.append(
+            this,
+            "incident action=$action package=$packageName state=$state bucket=$standbyBucket packageState=$packageState exitInfo=$exitInfo"
+        )
     }
 
     private fun recordRestartAttempt(packageName: String): Boolean {
@@ -163,9 +218,12 @@ class QidiWatchdogService : Service() {
         return true
     }
 
-    private fun updateStatus(status: String) {
+    private fun updateStatus(status: String, recordEvent: Boolean = false) {
         QidiSettings.setWatchdogStatus(this, status)
-        QidiEventLog.append(this, status)
+        if (recordEvent || lastLoggedStatus != status && !status.startsWith("Watchdog checked")) {
+            QidiEventLog.append(this, status)
+            lastLoggedStatus = status
+        }
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.notify(NOTIFICATION_ID, notification(status))
     }
@@ -214,6 +272,15 @@ class QidiWatchdogService : Service() {
         return PACKAGE_NAME_PATTERN.matches(this)
     }
 
+    private fun String.compactForLog(): String {
+        return lineSequence()
+            .map { line -> line.trim() }
+            .filter { line -> line.isNotBlank() }
+            .joinToString(" | ")
+            .ifBlank { "none" }
+            .take(FIELD_LOG_VALUE_LIMIT)
+    }
+
     companion object {
         const val ACTION_START = "app.qidi.action.START_WATCHDOG"
         const val ACTION_STOP = "app.qidi.action.STOP_WATCHDOG"
@@ -225,7 +292,10 @@ class QidiWatchdogService : Service() {
         private const val MAX_RESTARTS_PER_WINDOW = 3
         private const val RATE_LIMIT_WINDOW_MS = 60_000L
         private const val MIN_IMMEDIATE_CHECK_INTERVAL_MS = 5_000L
+        private const val HEARTBEAT_INTERVAL_MS = 6 * 60 * 60 * 1000L
+        private const val SENTINEL_ENSURE_INTERVAL_MS = 5 * 60 * 1000L
         private const val NOTIFICATION_TEXT_LIMIT = 180
+        private const val FIELD_LOG_VALUE_LIMIT = 700
         private val PACKAGE_NAME_PATTERN = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
     }
 }
