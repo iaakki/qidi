@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notification small icon. Android tints this white/grey — keep it one flat shape. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <path android:pathData="M12,2.8 A9.2,9.2 0 0 1 12,21.2"
+        android:strokeColor="#FFFFFF" android:strokeWidth="2.2" android:strokeLineCap="round"/>
+    <path android:pathData="M12,6 A6,6 0 0 1 12,18"
+        android:strokeColor="#FFFFFF" android:strokeWidth="2.2" android:strokeLineCap="round"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M12,9.6 a2.4,2.4 0 1 0 0.01,0z"/>
+</vector>

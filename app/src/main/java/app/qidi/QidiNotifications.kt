@@ -41,7 +41,7 @@ object QidiNotifications {
 
     fun statusNotification(context: Context, title: String, body: String): Notification {
         return NotificationCompat.Builder(context, STATUS_CHANNEL)
-            .setSmallIcon(R.drawable.ic_qidi_notification)
+            .setSmallIcon(R.drawable.ic_stat_qidi)
             .setContentTitle(title)
             .setContentText(body)
             .setContentIntent(openAppIntent(context))
@@ -90,7 +90,7 @@ object QidiNotifications {
         }
 
         val notification = NotificationCompat.Builder(context, PROBLEM_CHANNEL)
-            .setSmallIcon(R.drawable.ic_qidi_notification)
+            .setSmallIcon(R.drawable.ic_stat_qidi)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
