@@ -27,6 +27,7 @@ class QidiWatchdogService : Service() {
     private var lastHeartbeatAt = 0L
     private var lastSentinelEnsureAt = 0L
     private var lastLoggedStatus: String? = null
+    private var publishedPackages: List<String>? = null
     private val restartHistory = mutableMapOf<String, ArrayDeque<Long>>()
     private val lastKnownRunning = mutableMapOf<String, Boolean>()
     private val lastLoggedState = mutableMapOf<String, String>()
@@ -104,8 +105,17 @@ class QidiWatchdogService : Service() {
         QidiCommands.protectionCommands(packageName).forEach { command -> ShizukuShell.run(command) }
         ensureShellSentinel()
 
+        val screenProbe = ShizukuShell.run(QidiCommands.isScreenAwakeCommand()).stdout.trim()
+        if (screenProbe.isBlank()) {
+            updateStatus("Watchdog waiting: Shizuku shell is not responding.", recordEvent = true)
+            return
+        }
+        val screenAwake = screenProbe == "true"
+
         val packages = QidiSettings.selectedProtectedPackages(this)
             .filter { packageName -> packageName != this.packageName && packageName.isValidPackageName() }
+
+        publishProtectedPackages(packages)
 
         if (packages.isEmpty()) {
             updateStatus("Watchdog running: no restartable apps selected.", recordEvent = true)
@@ -118,10 +128,15 @@ class QidiWatchdogService : Service() {
         val limited = mutableListOf<String>()
         val failed = mutableListOf<String>()
         val idle = mutableListOf<String>()
-        val qidiWasForeground = ShizukuShell.run(QidiCommands.isPackageFocusedCommand(packageName)).stdout.trim() == "true"
+        val deferred = mutableListOf<String>()
+        val unknown = mutableListOf<String>()
 
         packages.forEach { packageName ->
             val state = ShizukuShell.run(QidiCommands.processStateCommand(packageName)).stdout.trim()
+            if (state.isBlank()) {
+                unknown.add(packageName)
+                return@forEach
+            }
             if (state == "running") {
                 lastKnownRunning[packageName] = true
                 recordStateChange(packageName, state)
@@ -146,19 +161,26 @@ class QidiWatchdogService : Service() {
             QidiEventLog.append(this, "Restarting $packageName after state=$state.")
             recordIncident(packageName, state, "restart-attempt")
             QidiCommands.protectionCommands(packageName).forEach { command -> ShizukuShell.run(command) }
-            ShizukuShell.run(QidiCommands.restartCommand(packageName))
+            ShizukuShell.run(QidiCommands.quietRestartCommand(packageName))
             val updatedState = ShizukuShell.run(QidiCommands.processStateCommand(packageName)).stdout.trim()
-            if (updatedState == "running") {
-                restarted.add(packageName)
-                lastKnownRunning[packageName] = true
-                QidiEventLog.append(this, "Restarted $packageName.")
-                recordIncident(packageName, updatedState, "restart-success")
-                if (qidiWasForeground) ShizukuShell.run(QidiCommands.startQidiCommand(this.packageName))
-            } else {
-                failed.add(packageName)
-                lastKnownRunning[packageName] = false
-                QidiEventLog.append(this, "Failed to restart $packageName; state=$updatedState.")
-                recordIncident(packageName, updatedState, "restart-failed")
+            when {
+                updatedState == "running" -> {
+                    restarted.add(packageName)
+                    lastKnownRunning[packageName] = true
+                    QidiEventLog.append(this, "Restarted $packageName in the background.")
+                    recordIncident(packageName, updatedState, "restart-success")
+                }
+                screenAwake -> {
+                    deferred.add(packageName)
+                    QidiEventLog.append(this, "Deferred $packageName until the screen turns off.")
+                    recordIncident(packageName, updatedState, "restart-deferred")
+                }
+                else -> {
+                    failed.add(packageName)
+                    lastKnownRunning[packageName] = false
+                    QidiEventLog.append(this, "Failed to restart $packageName; state=$updatedState.")
+                    recordIncident(packageName, updatedState, "restart-failed")
+                }
             }
         }
 
@@ -166,11 +188,25 @@ class QidiWatchdogService : Service() {
             append("Watchdog checked ${packages.size} apps at ${timestamp()}.")
             if (recoverNow) append(" Manual recovery.")
             if (restarted.isNotEmpty()) append(" Restarted: ${restarted.joinToString()}.")
+            if (deferred.isNotEmpty()) append(" Waiting for screen off: ${deferred.joinToString()}.")
             if (idle.isNotEmpty()) append(" Idle: ${idle.size}.")
             if (limited.isNotEmpty()) append(" Rate limited: ${limited.joinToString()}.")
             if (failed.isNotEmpty()) append(" Failed: ${failed.joinToString()}.")
+            if (unknown.isNotEmpty()) append(" Unreadable: ${unknown.size}.")
         }
-        updateStatus(status, recordEvent = recoverNow || restarted.isNotEmpty() || limited.isNotEmpty() || failed.isNotEmpty())
+        updateStatus(
+            status,
+            recordEvent = recoverNow || restarted.isNotEmpty() || limited.isNotEmpty() ||
+                failed.isNotEmpty() || deferred.isNotEmpty()
+        )
+    }
+
+    private fun publishProtectedPackages(packages: List<String>) {
+        val payload = packages.sorted()
+        if (payload == publishedPackages) return
+        if (ShizukuShell.run(QidiCommands.writeProtectedPackagesCommand(payload)).exitCode != 0) return
+        publishedPackages = payload
+        QidiFieldLog.append(this, "sentinel-packages ${payload.joinToString()}")
     }
 
     private fun recordHeartbeat(packages: List<String>) {
@@ -185,7 +221,7 @@ class QidiWatchdogService : Service() {
         if (now - lastSentinelEnsureAt < SENTINEL_ENSURE_INTERVAL_MS) return
         lastSentinelEnsureAt = now
 
-        val result = ShizukuShell.run(QidiCommands.startSentinelCommand(packageName))
+        val result = ShizukuShell.run(QidiCommands.installSentinelCommand())
         val detail = result.format().compactForLog()
         QidiFieldLog.append(this, "shell-sentinel-ensure $detail")
     }
