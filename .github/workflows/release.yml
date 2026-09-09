@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Debug-signed: installable without managing a keystore in CI.
+      - name: Build APK
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Name the artifact after the tag
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/qidi-${GITHUB_REF_NAME}.apk"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/qidi-*.apk
+          generate_release_notes: true
