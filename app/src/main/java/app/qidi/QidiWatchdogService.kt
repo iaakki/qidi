@@ -95,10 +95,14 @@ class QidiWatchdogService : Service() {
 
         if (!Shizuku.pingBinder()) {
             updateStatus("Watchdog waiting: Shizuku binder is not available.", recordEvent = true)
+            publishUnavailable("Waiting for Shizuku")
+            QidiNotifications.updateProblem(this, QidiNotifications.Problem.SHIZUKU_DEAD)
             return
         }
         if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
             updateStatus("Watchdog waiting: Shizuku permission is not granted.", recordEvent = true)
+            publishUnavailable("Shizuku permission needed")
+            QidiNotifications.updateProblem(this, QidiNotifications.Problem.SHIZUKU_PERMISSION)
             return
         }
 
@@ -108,9 +112,23 @@ class QidiWatchdogService : Service() {
         val screenProbe = ShizukuShell.run(QidiCommands.isScreenAwakeCommand()).stdout.trim()
         if (screenProbe.isBlank()) {
             updateStatus("Watchdog waiting: Shizuku shell is not responding.", recordEvent = true)
+            publishUnavailable("Waiting for Shizuku")
+            QidiNotifications.updateProblem(this, QidiNotifications.Problem.SHIZUKU_DEAD)
             return
         }
         val screenAwake = screenProbe == "true"
+
+        val sentinelMissing =
+            ShizukuShell.run(QidiCommands.sentinelAliveCommand()).stdout.trim() != "true"
+        QidiSettings.setLastCheckAt(this, System.currentTimeMillis())
+        QidiNotifications.updateProblem(
+            this,
+            if (sentinelMissing) {
+                QidiNotifications.Problem.SENTINEL_MISSING
+            } else {
+                QidiNotifications.Problem.NONE
+            }
+        )
 
         val packages = QidiSettings.selectedProtectedPackages(this)
             .filter { packageName -> packageName != this.packageName && packageName.isValidPackageName() }
@@ -119,6 +137,7 @@ class QidiWatchdogService : Service() {
 
         if (packages.isEmpty()) {
             updateStatus("Watchdog running: no restartable apps selected.", recordEvent = true)
+            publishHeartbeat(0, 0, sentinelMissing)
             return
         }
 
@@ -167,6 +186,7 @@ class QidiWatchdogService : Service() {
                 updatedState == "running" -> {
                     restarted.add(packageName)
                     lastKnownRunning[packageName] = true
+                    QidiSettings.recordRecovery(this)
                     QidiEventLog.append(this, "Restarted $packageName in the background.")
                     recordIncident(packageName, updatedState, "restart-success")
                 }
@@ -199,6 +219,7 @@ class QidiWatchdogService : Service() {
             recordEvent = recoverNow || restarted.isNotEmpty() || limited.isNotEmpty() ||
                 failed.isNotEmpty() || deferred.isNotEmpty()
         )
+        publishHeartbeat(packages.size, deferred.size, sentinelMissing)
     }
 
     private fun publishProtectedPackages(packages: List<String>) {
@@ -260,44 +281,35 @@ class QidiWatchdogService : Service() {
             QidiEventLog.append(this, status)
             lastLoggedStatus = status
         }
-        val notificationManager = getSystemService(NotificationManager::class.java)
-        notificationManager.notify(NOTIFICATION_ID, notification(status))
+    }
+
+    /** Heartbeat text stays still unless something real changed; see [QidiNotifications]. */
+    private fun publishHeartbeat(protectedCount: Int, deferred: Int, sentinelMissing: Boolean) {
+        val title = "Qidi · protecting $protectedCount apps"
+        val body = when {
+            sentinelMissing -> "Backup sentinel missing"
+            deferred > 0 -> "$deferred waiting for screen off"
+            else -> "Ongoing · silent"
+        }
+        QidiNotifications.updateStatus(this, title, body)
+    }
+
+    private fun publishUnavailable(body: String) {
+        QidiNotifications.updateStatus(this, "Qidi · not protecting", body)
     }
 
     private fun startInForeground(status: String) {
+        val notification = QidiNotifications.statusNotification(this, "Qidi · starting", status)
         if (Build.VERSION.SDK_INT >= 34) {
-            startForeground(NOTIFICATION_ID, notification(status), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
-            startForeground(NOTIFICATION_ID, notification(status))
+            startForeground(NOTIFICATION_ID, notification)
         }
-    }
-
-    private fun notification(status: String): Notification {
-        val openIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        return Notification.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_manage)
-            .setContentTitle("Qidi watchdog")
-            .setContentText(status.take(NOTIFICATION_TEXT_LIMIT))
-            .setContentIntent(openIntent)
-            .setOngoing(true)
-            .build()
+        QidiNotifications.resetStatusCache()
     }
 
     private fun createNotificationChannel() {
-        val notificationManager = getSystemService(NotificationManager::class.java)
-        notificationManager.createNotificationChannel(
-            NotificationChannel(
-                NOTIFICATION_CHANNEL_ID,
-                "Qidi watchdog",
-                NotificationManager.IMPORTANCE_LOW
-            )
-        )
+        QidiNotifications.ensureChannels(this)
     }
 
     private fun timestamp(): String {
@@ -322,7 +334,6 @@ class QidiWatchdogService : Service() {
         const val ACTION_STOP = "app.qidi.action.STOP_WATCHDOG"
         const val EXTRA_RECOVER_NOW = "app.qidi.extra.RECOVER_NOW"
 
-        private const val NOTIFICATION_CHANNEL_ID = "qidi_watchdog"
         private const val NOTIFICATION_ID = 100
         private const val CHECK_INTERVAL_SECONDS = 15L
         private const val MAX_RESTARTS_PER_WINDOW = 3
@@ -330,7 +341,6 @@ class QidiWatchdogService : Service() {
         private const val MIN_IMMEDIATE_CHECK_INTERVAL_MS = 5_000L
         private const val HEARTBEAT_INTERVAL_MS = 6 * 60 * 60 * 1000L
         private const val SENTINEL_ENSURE_INTERVAL_MS = 5 * 60 * 1000L
-        private const val NOTIFICATION_TEXT_LIMIT = 180
         private const val FIELD_LOG_VALUE_LIMIT = 700
         private val PACKAGE_NAME_PATTERN = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
     }
