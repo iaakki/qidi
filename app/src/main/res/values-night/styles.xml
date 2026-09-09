@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/qidi_background</item>
         <item name="android:colorAccent">#C67139</item>
         <item name="android:navigationBarColor">@color/qidi_background</item>
         <item name="android:statusBarColor">@color/qidi_background</item>
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
     </style>
 </resources>

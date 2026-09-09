@@ -23,3 +23,6 @@ tcl-packages*.txt
 smartmanager-*.txt
 delta-*.txt
 pid-oem-processes-*.txt
+
+# Design tool exports
+docs/*.zip

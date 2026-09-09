@@ -43,6 +43,11 @@ object QidiCommands {
         return "pidof shizuku_server >/dev/null 2>&1 && echo true || echo false"
     }
 
+    fun sentinelAliveCommand(): String {
+        val pidfile = ShizukuShell.quote(SENTINEL_PID_FILE)
+        return "if [ -f $pidfile ] && kill -0 \"\$(cat $pidfile)\" 2>/dev/null; then echo true; else echo false; fi"
+    }
+
     /** Restarts an app without pulling it to the foreground; see [sentinelScript]. */
     fun quietRestartCommand(packageName: String): String {
         return "sh ${ShizukuShell.quote(SENTINEL_SCRIPT_FILE)} start ${ShizukuShell.quote(packageName)}"

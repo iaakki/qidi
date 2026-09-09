@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/organic-74b8e0c7-f65e-4eeb-9bf1-9ba612e43dc8/styles.css">
+<script src="_ds/organic-74b8e0c7-f65e-4eeb-9bf1-9ba612e43dc8/_ds_bundle.js"></script>
+<style>
+body{margin:0;background:#0f0d0b}
+a{color:var(--color-accent);text-underline-offset:3px}
+a:hover{color:var(--color-accent-400)}
+:root{
+--color-bg:#15120f;--color-surface:#221e19;--color-text:#f7f1e6;
+--color-divider:color-mix(in srgb,#f7f1e6 13%,transparent);
+--qd-elev:#2c2721;--qd-muted:#b3a897;--qd-canvas:#0f0d0b;
+--qd-ok:#b9cb9b;--qd-wait:#f0a16f;--qd-bad:#e5806c;--qd-off:#9c9384;
+--qd-ok-f:color-mix(in srgb,#b9cb9b 12%,transparent);
+--qd-wait-f:color-mix(in srgb,#f0a16f 12%,transparent);
+--qd-bad-f:color-mix(in srgb,#e5806c 13%,transparent);
+--qd-off-f:color-mix(in srgb,#9c9384 10%,transparent);
+--qd-knob:#17150f;
+}
+[data-qd="light"]{
+--color-bg:#f5ead8;--color-surface:#ece0ca;--color-text:#201e1d;
+--color-divider:color-mix(in srgb,#201e1d 15%,transparent);
+--qd-elev:#fffaf0;--qd-muted:#6b6355;
+--qd-ok:#56633f;--qd-wait:#a2551f;--qd-bad:#9d3b28;--qd-off:#82796a;
+--qd-ok-f:color-mix(in srgb,#8fa073 20%,transparent);
+--qd-wait-f:color-mix(in srgb,#d67f48 18%,transparent);
+--qd-bad-f:color-mix(in srgb,#9d3b28 13%,transparent);
+--qd-off-f:color-mix(in srgb,#82796a 12%,transparent);
+--qd-knob:#f9f4ed;
+}
+[data-mono="1"]{--qd-ok:#cfc5b3;--qd-wait:#cfc5b3;--qd-bad:#f4ede1;--qd-off:#9c9384;
+--qd-ok-f:color-mix(in srgb,#cfc5b3 10%,transparent);--qd-wait-f:color-mix(in srgb,#cfc5b3 10%,transparent);
+--qd-bad-f:color-mix(in srgb,#f4ede1 12%,transparent);}
+[data-qd="light"][data-mono="1"]{--qd-ok:#5d5548;--qd-wait:#5d5548;--qd-bad:#221f1a;
+--qd-ok-f:color-mix(in srgb,#5d5548 12%,transparent);--qd-wait-f:color-mix(in srgb,#5d5548 12%,transparent);
+--qd-bad-f:color-mix(in srgb,#221f1a 12%,transparent);}
+[data-st="ok"]{--st:var(--qd-ok);--stf:var(--qd-ok-f)}
+[data-st="wait"]{--st:var(--qd-wait);--stf:var(--qd-wait-f)}
+[data-st="bad"]{--st:var(--qd-bad);--stf:var(--qd-bad-f)}
+[data-st="off"]{--st:var(--qd-off);--stf:var(--qd-off-f)}
+[data-hl="true"]{background:var(--stf)}
+[data-on="true"]{background:var(--qd-ok)!important;border-color:transparent!important}
+[data-on="true"] i{transform:translateX(20px);background:var(--qd-knob)!important}
+[data-ic="0"]{background:var(--color-accent);color:#2a1408}
+[data-ic="1"]{background:#4a5a3e;color:#dcead0}
+[data-ic="2"]{background:#5c4634;color:#f3d9be}
+[data-ic="3"]{background:#3d4a53;color:#d3e3ee}
+[data-ic="4"]{background:#4c3f52;color:#e4d3ef}
+[data-ic="5"]{background:#55503a;color:#ebe3bf}
+[data-ic="6"]{background:#4c3a38;color:#f0d2cd}
+[data-sel="true"]{background:var(--color-accent)!important;color:#2a1408!important;border-color:transparent!important}
+.qd-r:hover{background:color-mix(in srgb,#f7f1e6 6%,transparent)}
+@keyframes qd-breathe{0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+@keyframes qd-shade{from{transform:translateY(-14px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes qd-spin{to{transform:rotate(360deg)}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#0f0d0b;color:#f7f1e6;font-family:var(--font-body);padding:26px;display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start">
+
+<aside style="width:252px;flex:none;display:flex;flex-direction:column;gap:20px">
+<div>
+<div style="font-family:var(--font-heading);font-size:30px;line-height:1.05">Qidi</div>
+<div style="font-size:12.5px;color:#a89d8c;margin-top:6px;text-wrap:pretty">Keep-alive watchdog — redesign proposal. Dark is the primary theme; the light build is shown for the same screens.</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:7px">
+<div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8d8474">State</div>
+<sc-for list="{{ scenarios }}" as="s" hint-placeholder-count="8">
+<button class="qd-r" onClick="{{ s.pick }}" data-sel="{{ s.selStr }}" style="text-align:left;cursor:pointer;font:inherit;font-size:13px;color:#f7f1e6;background:#1b1815;border:1px solid rgba(247,241,230,.1);border-radius:999px;padding:8px 14px;min-height:36px;display:flex;align-items:center;gap:9px">
+<span style="width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.55;flex:none"></span>{{ s.label }}</button>
+</sc-for>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:7px">
+<div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8d8474">Screen</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap">
+<sc-for list="{{ screens }}" as="s" hint-placeholder-count="3">
+<button class="qd-r" onClick="{{ s.pick }}" data-sel="{{ s.selStr }}" style="cursor:pointer;font:inherit;font-size:12.5px;color:#f7f1e6;background:#1b1815;border:1px solid rgba(247,241,230,.1);border-radius:999px;padding:7px 13px;min-height:34px">{{ s.label }}</button>
+</sc-for>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:7px">
+<div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8d8474">View</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap">
+<button class="qd-r" onClick="{{ toggleTheme }}" style="cursor:pointer;font:inherit;font-size:12.5px;color:#f7f1e6;background:#1b1815;border:1px solid rgba(247,241,230,.1);border-radius:999px;padding:7px 13px;min-height:34px">{{ themeLabel }}</button>
+<button class="qd-r" onClick="{{ toggleShade }}" data-sel="{{ shadeStr }}" style="cursor:pointer;font:inherit;font-size:12.5px;color:#f7f1e6;background:#1b1815;border:1px solid rgba(247,241,230,.1);border-radius:999px;padding:7px 13px;min-height:34px">{{ shadeLabel }}</button>
+</div>
+</div>
+
+<div style="border-top:1px solid rgba(247,241,230,.09);padding-top:16px;display:flex;flex-direction:column;gap:11px;font-size:11.5px;line-height:1.5;color:#9a917f">
+<div><b style="color:#cec4b2;font-weight:600">Health hero.</b> One capsule, four states, never hue alone — glyph, word and colour always agree. Its job is to be readable in the two seconds before you decide to worry.</div>
+<div><b style="color:#cec4b2;font-weight:600">Deferred.</b> Reads as a queue, not a fault: same calm palette, phrased as consideration ("won't interrupt you").</div>
+<div><b style="color:#cec4b2;font-weight:600">Activity.</b> One sentence, no chart — the number reassures, a feed would not.</div>
+<div><b style="color:#cec4b2;font-weight:600">Needs Compose:</b> the hero's state cross-fade, expanding checklist rows, and the toggles. Everything else maps to plain Views.</div>
+</div>
+</aside>
+
+<div data-qd="{{ themeAttr }}" data-mono="{{ monoAttr }}" style="position:relative;flex:none">
+<x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" dark="{{ isDark }}" hint-size="412px,892px">
+
+<sc-if value="{{ isStatus }}" hint-placeholder-val="{{ true }}">
+<div style="background:var(--color-bg);min-height:100%;padding-bottom:22px;color:var(--color-text)">
+
+<div style="display:flex;align-items:center;padding:10px 18px 4px;min-height:56px">
+<div style="font-family:var(--font-heading);font-size:25px;line-height:1;flex:1">Qidi</div>
+<button class="qd-r" onClick="{{ goSettings }}" aria-label="Settings" style="width:48px;height:48px;border:0;background:transparent;border-radius:50%;cursor:pointer;color:var(--color-text);display:flex;align-items:center;justify-content:center">
+<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+</button>
+</div>
+
+<sc-if value="{{ showRecovered }}">
+<div data-st="ok" style="margin:2px 16px 0;padding:13px 16px;border-radius:22px;background:var(--stf);display:flex;gap:11px;align-items:flex-start">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--st)" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path></svg>
+<div style="flex:1;font-size:13px;line-height:1.45;color:var(--color-text);text-wrap:pretty">Qidi was force-stopped at 09:14 and brought itself back 4 seconds later. Nothing was missed.</div>
+<button onClick="{{ dismissRecovered }}" aria-label="Dismiss" style="border:0;background:transparent;color:var(--qd-muted);cursor:pointer;font:inherit;font-size:12px;padding:0 2px">Got it</button>
+</div>
+</sc-if>
+
+<div data-st="{{ heroSt }}" style="margin:12px 16px 0;padding:22px 22px 18px;border-radius:30px;background:var(--stf);border:1px solid color-mix(in srgb,var(--st) 32%,transparent)">
+<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+<div style="width:54px;height:54px;border-radius:50%;border:2.5px solid var(--st);color:var(--st);display:flex;align-items:center;justify-content:center;flex:none">
+<sc-if value="{{ heroOk }}"><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg></sc-if>
+<sc-if value="{{ heroWait }}"><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M12 8v4l2.5 1.5"></path></svg></sc-if>
+<sc-if value="{{ heroBad }}"><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9.5 9.5l5 5"></path><path d="M14.5 9.5l-5 5"></path></svg></sc-if>
+<sc-if value="{{ heroOff }}"><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"></path><path d="M18.4 6.6a9 9 0 1 1-12.8 0"></path></svg></sc-if>
+</div>
+<div style="flex:1">
+<div style="display:inline-flex;align-items:center;gap:7px;border:1px solid color-mix(in srgb,var(--st) 45%,transparent);color:var(--st);border-radius:999px;padding:3px 11px;font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase">{{ heroChip }}</div>
+</div>
+</div>
+<h2 style="font-size:27px;line-height:1.12;margin:0 0 9px;color:var(--color-text);text-wrap:pretty">{{ heroTitle }}</h2>
+<p style="margin:0;font-size:14.5px;line-height:1.5;color:var(--qd-muted);text-wrap:pretty">{{ heroSub }}</p>
+<div style="display:flex;align-items:center;gap:8px;margin-top:16px;font-size:12.5px;color:var(--qd-muted)">
+<span style="width:8px;height:8px;border-radius:50%;background:var(--st);animation:qd-breathe 2.6s ease-in-out infinite;flex:none"></span>
+<span aria-live="polite">{{ checkedLabel }}</span>
+</div>
+</div>
+
+<div style="margin:14px 16px 0;background:var(--color-surface);border-radius:26px;padding:6px">
+<sc-for list="{{ checks }}" as="c" hint-placeholder-count="2">
+<div data-st="{{ c.st }}" data-hl="{{ c.hlStr }}" style="display:flex;flex-direction:column;gap:11px;padding:13px 14px;border-radius:21px">
+<div style="display:flex;align-items:center;gap:12px;min-height:24px">
+<span aria-hidden="true" style="width:9px;height:9px;border-radius:50%;background:var(--st);flex:none"></span>
+<span style="flex:1;font-size:15px;font-weight:600;color:var(--color-text)">{{ c.label }}</span>
+<span aria-label="{{ c.aria }}" style="font-size:13px;font-weight:700;color:var(--st);letter-spacing:.01em">{{ c.value }}</span>
+</div>
+<sc-if value="{{ c.showAction }}">
+<div style="display:flex;align-items:center;gap:12px;padding-left:21px">
+<span style="flex:1;font-size:12.5px;line-height:1.45;color:var(--qd-muted);text-wrap:pretty">{{ c.hint }}</span>
+<button class="btn btn-primary" onClick="{{ c.fix }}" style="min-height:40px;font-size:13px;flex:none;white-space:nowrap">{{ c.action }}</button>
+</div>
+</sc-if>
+</div>
+</sc-for>
+<sc-if value="{{ hasQuiet }}">
+<div style="padding:4px 16px 12px;font-size:12px;color:var(--qd-muted);display:flex;align-items:center;gap:9px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="flex:none;opacity:.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+<span>{{ quietNote }}</span>
+</div>
+</sc-if>
+</div>
+
+<sc-if value="{{ showSummary }}">
+<button class="qd-r" onClick="{{ goApps }}" style="margin:12px 16px 0;width:calc(100% - 32px);background:var(--color-surface);border:0;border-radius:26px;padding:16px;cursor:pointer;font:inherit;color:var(--color-text);display:flex;align-items:center;gap:14px;text-align:left">
+<div style="display:flex;gap:-6px">
+<sc-for list="{{ summaryIcons }}" as="a" hint-placeholder-count="5">
+<span data-ic="{{ a.tint }}" style="width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;margin-right:-8px;border:2px solid var(--color-surface)">{{ a.initial }}</span>
+</sc-for>
+</div>
+<div style="flex:1;padding-left:10px">
+<div style="font-size:15px;font-weight:600">{{ summaryTitle }}</div>
+<div style="font-size:12.5px;color:var(--qd-muted);margin-top:2px">{{ summarySub }}</div>
+</div>
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--qd-muted)" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg>
+</button>
+</sc-if>
+
+<sc-if value="{{ showActivityLine }}">
+<div style="margin:14px 16px 0;padding:0 4px;font-size:12.5px;line-height:1.5;color:var(--qd-muted);text-wrap:pretty">{{ activityLine }}</div>
+</sc-if>
+
+<div style="display:flex;gap:10px;padding:18px 16px 0">
+<button class="btn btn-primary" onClick="{{ primaryAction }}" style="flex:1;min-height:50px;font-size:15px">{{ primaryLabel }}</button>
+<sc-if value="{{ showRecover }}">
+<button class="btn btn-secondary" onClick="{{ recoverNow }}" style="min-height:50px;font-size:14px;color:var(--color-text);flex:none">{{ recoverLabel }}</button>
+</sc-if>
+</div>
+
+</div>
+</sc-if>
+
+<sc-if value="{{ isApps }}">
+<div style="background:var(--color-bg);min-height:100%;padding-bottom:22px;color:var(--color-text)">
+<div style="display:flex;align-items:center;gap:6px;padding:10px 16px 4px;min-height:56px">
+<button class="qd-r" onClick="{{ goStatus }}" aria-label="Back" style="width:48px;height:48px;border:0;background:transparent;border-radius:50%;cursor:pointer;color:var(--color-text);display:flex;align-items:center;justify-content:center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
+</button>
+<div style="font-family:var(--font-heading);font-size:22px;line-height:1">Protected apps</div>
+</div>
+
+<div style="padding:6px 16px 10px;position:relative">
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--qd-muted)" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:30px;top:19px"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<input class="input" value="{{ q }}" onInput="{{ onSearch }}" placeholder="Search apps" aria-label="Search apps" style="min-height:48px;padding-left:40px;background:var(--color-surface);color:var(--color-text)">
+</div>
+
+<sc-if value="{{ appsEmpty }}">
+<div style="margin:20px 16px;padding:26px 22px;border-radius:28px;background:var(--color-surface);text-align:left">
+<div style="width:46px;height:46px;border-radius:50%;border:2.5px solid var(--color-accent);color:var(--color-accent);display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+</div>
+<h4 style="margin:0 0 8px;font-size:19px">Nothing protected yet</h4>
+<p style="margin:0;font-size:13.5px;line-height:1.5;color:var(--qd-muted);text-wrap:pretty">Turn on the few apps that must never die — a messenger, a sync client, your automation. Qidi keeps itself alive automatically, so it is already on the list.</p>
+</div>
+</sc-if>
+
+<sc-if value="{{ hasProtected }}">
+<div style="padding:14px 20px 6px;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--qd-muted)">{{ protectedHeading }}</div>
+<sc-for list="{{ protectedApps }}" as="a" hint-placeholder-count="4">
+<div data-st="{{ a.st }}" class="qd-r" style="display:flex;align-items:center;gap:14px;padding:10px 18px;min-height:64px">
+<span data-ic="{{ a.tint }}" style="width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;flex:none">{{ a.initial }}</span>
+<div style="flex:1;min-width:0">
+<div style="font-size:15px;font-weight:600;color:var(--color-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.name }}</div>
+<div style="font-size:11.5px;color:var(--qd-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.pkg }}</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+<span aria-hidden="true" style="width:7px;height:7px;border-radius:50%;background:var(--st);flex:none"></span>
+<span style="font-size:11.5px;font-weight:600;color:var(--st)">{{ a.stateLabel }}</span>
+</div>
+</div>
+<sc-if value="{{ a.locked }}">
+<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;max-width:132px">
+<div style="display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 11px;background:var(--qd-elev);color:var(--qd-muted);font-size:11.5px;font-weight:600">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2.5"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>Always on</div>
+<div style="font-size:10.5px;color:var(--qd-muted);text-align:right;line-height:1.35">Qidi is killed too — it must guard itself</div>
+</div>
+</sc-if>
+<sc-if value="{{ a.togglable }}">
+<button onClick="{{ a.toggle }}" data-on="true" aria-label="{{ a.aria }}" style="width:52px;height:32px;border-radius:999px;border:1px solid var(--color-divider);background:var(--qd-elev);padding:3px;flex:none;cursor:pointer;display:block;transition:background .18s">
+<i style="width:24px;height:24px;border-radius:50%;background:var(--qd-muted);display:block;transition:transform .18s"></i>
+</button>
+</sc-if>
+</div>
+</sc-for>
+</sc-if>
+
+<sc-if value="{{ hasOthers }}">
+<div style="padding:18px 20px 6px;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--qd-muted)">All apps</div>
+<sc-for list="{{ otherApps }}" as="a" hint-placeholder-count="5">
+<div class="qd-r" style="display:flex;align-items:center;gap:14px;padding:10px 18px;min-height:64px">
+<span data-ic="{{ a.tint }}" style="width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;flex:none;opacity:.75">{{ a.initial }}</span>
+<div style="flex:1;min-width:0">
+<div style="font-size:15px;font-weight:600;color:var(--color-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.name }}</div>
+<div style="font-size:11.5px;color:var(--qd-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.pkg }}</div>
+</div>
+<button onClick="{{ a.toggle }}" data-on="false" aria-label="{{ a.aria }}" style="width:52px;height:32px;border-radius:999px;border:1px solid var(--color-divider);background:var(--qd-elev);padding:3px;flex:none;cursor:pointer;display:block;transition:background .18s">
+<i style="width:24px;height:24px;border-radius:50%;background:var(--qd-muted);display:block;transition:transform .18s"></i>
+</button>
+</div>
+</sc-for>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSettings }}">
+<div style="background:var(--color-bg);min-height:100%;padding-bottom:26px;color:var(--color-text)">
+<div style="display:flex;align-items:center;gap:6px;padding:10px 16px 4px;min-height:56px">
+<button class="qd-r" onClick="{{ goStatus }}" aria-label="Back" style="width:48px;height:48px;border:0;background:transparent;border-radius:50%;cursor:pointer;color:var(--color-text);display:flex;align-items:center;justify-content:center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>
+</button>
+<div style="font-family:var(--font-heading);font-size:22px;line-height:1">Settings</div>
+</div>
+
+<div style="margin:10px 16px 0;background:var(--color-surface);border-radius:26px;padding:4px">
+<sc-for list="{{ settingRows }}" as="s" hint-placeholder-count="4">
+<div style="display:flex;flex-direction:column;gap:10px;padding:15px 16px">
+<div style="display:flex;align-items:flex-start;gap:14px;min-height:34px">
+<div style="flex:1">
+<div style="font-size:15px;font-weight:600;line-height:1.3">{{ s.label }}</div>
+<div style="font-size:12.5px;line-height:1.45;color:var(--qd-muted);margin-top:3px;text-wrap:pretty">{{ s.sub }}</div>
+</div>
+<sc-if value="{{ s.hasToggle }}">
+<button onClick="{{ s.toggle }}" data-on="{{ s.onStr }}" aria-label="{{ s.aria }}" style="width:52px;height:32px;border-radius:999px;border:1px solid var(--color-divider);background:var(--qd-elev);padding:3px;flex:none;cursor:pointer;display:block;margin-top:2px;transition:background .18s">
+<i style="width:24px;height:24px;border-radius:50%;background:var(--qd-muted);display:block;transition:transform .18s"></i>
+</button>
+</sc-if>
+<sc-if value="{{ s.locked }}">
+<div style="display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 12px;background:var(--qd-elev);color:var(--qd-muted);font-size:11.5px;font-weight:600;flex:none;margin-top:2px">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2.5"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>Always on</div>
+</sc-if>
+</div>
+<sc-if value="{{ s.showLog }}">
+<div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:18px;background:var(--qd-elev)">
+<span style="flex:1;font-size:12.5px;color:var(--qd-muted)">Diagnostic log · {{ logSize }}</span>
+<button class="btn btn-secondary" onClick="{{ deleteLog }}" style="min-height:38px;font-size:12.5px;color:var(--color-text);white-space:nowrap">Delete now</button>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+
+<div style="margin:16px 20px 0;font-size:12px;line-height:1.6;color:var(--qd-muted)">
+<div style="font-weight:600;color:var(--color-text);font-size:13px">Qidi 2.0 · build 214</div>
+<div>181 recoveries since install · watching since 2 August</div>
+</div>
+</div>
+</sc-if>
+
+</x-import>
+
+<sc-if value="{{ shade }}">
+<div style="position:absolute;left:8px;right:8px;top:8px;bottom:8px;border-radius:12px;overflow:hidden;background:linear-gradient(180deg,rgba(10,9,8,.97),rgba(10,9,8,.9));backdrop-filter:blur(3px);padding:14px 12px;display:flex;flex-direction:column;gap:9px;animation:qd-shade .22s ease-out;font-family:Roboto,system-ui,sans-serif">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 8px 6px;color:rgba(255,255,255,.75);font-size:12.5px">
+<span>Tue, 9 Sep · 9:41</span>
+<button onClick="{{ toggleShade }}" style="border:0;background:transparent;color:rgba(255,255,255,.6);font:inherit;font-size:12px;cursor:pointer">Close</button>
+</div>
+
+<sc-if value="{{ notifStatus }}">
+<div style="background:#1f1d1b;border-radius:26px;padding:14px 16px">
+<div style="display:flex;align-items:center;gap:10px">
+<span data-st="{{ notifSt }}" style="width:22px;height:22px;border-radius:7px;background:var(--stf);border:1.5px solid var(--st);color:var(--st);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex:none;font-family:var(--font-body)">Q</span>
+<span style="font-size:12px;color:rgba(255,255,255,.6)">Qidi status · now</span>
+<span style="flex:1"></span>
+<button onClick="{{ toggleNotif }}" aria-label="Expand" style="border:0;background:transparent;cursor:pointer;color:rgba(255,255,255,.6);padding:4px;display:flex">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+</div>
+<div style="font-size:14.5px;color:#fff;margin-top:7px;font-weight:500">{{ notifTitle }}</div>
+<div style="font-size:12.5px;color:rgba(255,255,255,.55);margin-top:2px">{{ notifBody }}</div>
+<sc-if value="{{ notifExpanded }}">
+<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.09)">
+<div style="display:flex;gap:6px;margin-bottom:10px">
+<sc-for list="{{ notifDots }}" as="d" hint-placeholder-count="7">
+<span data-st="{{ d.st }}" title="{{ d.name }}" style="width:26px;height:26px;border-radius:9px;background:var(--stf);border:1px solid var(--st);color:var(--st);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700">{{ d.initial }}</span>
+</sc-for>
+</div>
+<div style="font-size:12px;color:rgba(255,255,255,.5)">{{ notifDetail }}</div>
+<div style="display:flex;gap:18px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.09)">
+<span style="font-size:13px;font-weight:600;color:#f0a16f">Recover now</span>
+<span style="font-size:13px;font-weight:600;color:#f0a16f">Open Qidi</span>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ notifAlert }}">
+<div style="background:#1f1d1b;border-radius:26px;padding:14px 16px">
+<div style="display:flex;align-items:center;gap:10px">
+<span data-st="bad" style="width:22px;height:22px;border-radius:7px;background:var(--st);color:#2a1408;display:flex;align-items:center;justify-content:center;flex:none">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 8v5"></path><path d="M12 17h.01"></path></svg>
+</span>
+<span style="font-size:12px;color:rgba(255,255,255,.6)">Qidi problems · 2 min ago</span>
+</div>
+<div style="font-size:14.5px;color:#fff;margin-top:7px;font-weight:500">{{ alertTitle }}</div>
+<div style="font-size:12.5px;color:rgba(255,255,255,.6);margin-top:3px;line-height:1.45">{{ alertBody }}</div>
+<div style="display:flex;gap:18px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.09)">
+<span style="font-size:13px;font-weight:600;color:#f0a16f">{{ alertAction }}</span>
+<span style="font-size:13px;font-weight:600;color:#f0a16f">Dismiss</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ notifSentinel }}">
+<div style="background:#1f1d1b;border-radius:26px;padding:14px 16px">
+<div style="display:flex;align-items:center;gap:10px">
+<span style="width:22px;height:22px;border-radius:50%;background:#5a5754;display:flex;align-items:center;justify-content:center;flex:none;font-size:11px;color:#ddd">!</span>
+<span style="font-size:12px;color:rgba(255,255,255,.6)">Android System · 09:14</span>
+</div>
+<div style="font-size:14px;color:#fff;margin-top:7px">Qidi was stopped. Restarting.</div>
+<div style="font-size:12.5px;color:rgba(255,255,255,.5);margin-top:2px">Posted by the backup sentinel — plain system text, outside the app's styling.</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ notifNone }}">
+<div style="background:rgba(255,255,255,.05);border-radius:26px;padding:16px;border:1px dashed rgba(255,255,255,.2)">
+<div style="font-size:13.5px;color:rgba(255,255,255,.8);line-height:1.5">No Qidi notification.</div>
+<div style="font-size:12.5px;color:rgba(255,255,255,.5);margin-top:4px;line-height:1.45">{{ noneReason }}</div>
+</div>
+</sc-if>
+
+<div style="background:#1f1d1b;border-radius:26px;padding:14px 16px;opacity:.55">
+<div style="display:flex;align-items:center;gap:10px">
+<span data-ic="3" style="width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:none;font-family:var(--font-body)">N</span>
+<span style="font-size:12px;color:rgba(255,255,255,.6)">Nextcloud · 08:57</span>
+</div>
+<div style="font-size:14px;color:#fff;margin-top:7px">Sync complete · 41 files</div>
+</div>
+
+<div style="margin-top:auto;text-align:center;font-size:11.5px;color:rgba(255,255,255,.35);padding:6px">The heartbeat is the dead man's switch — if this card is gone, Qidi is gone.</div>
+</div>
+</sc-if>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:760,&quot;height&quot;:1010},&quot;statusPalette&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Semantic&quot;,&quot;Monochrome&quot;],&quot;default&quot;:&quot;Semantic&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Status semantics&quot;},&quot;sentinelProminence&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Quiet until missing&quot;,&quot;Always a row&quot;],&quot;default&quot;:&quot;Quiet until missing&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Status semantics&quot;},&quot;showActivity&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Status semantics&quot;}}">
+const APPS = [
+  {id:'signal',name:'Signal',pkg:'org.thoughtcrime.securesms',tint:'1',def:true},
+  {id:'wa',name:'WhatsApp',pkg:'com.whatsapp',tint:'2',def:true},
+  {id:'tg',name:'Telegram',pkg:'org.telegram.messenger',tint:'3',def:true},
+  {id:'nc',name:'Nextcloud',pkg:'com.nextcloud.client',tint:'3',def:true},
+  {id:'ha',name:'Home Assistant',pkg:'io.homeassistant.companion.android',tint:'4',def:true},
+  {id:'tk',name:'Tasker',pkg:'net.dinglisch.android.taskerm',tint:'5',def:true},
+  {id:'qidi',name:'Qidi',pkg:'dev.qidi.keepalive',tint:'0',def:true,locked:true},
+  {id:'sy',name:'Syncthing',pkg:'com.nutomic.syncthingandroid',tint:'3'},
+  {id:'kde',name:'KDE Connect',pkg:'org.kde.kdeconnect_tp',tint:'2'},
+  {id:'tx',name:'Termux',pkg:'com.termux',tint:'6'},
+  {id:'ob',name:'Obsidian',pkg:'md.obsidian',tint:'4'},
+  {id:'ff',name:'Firefox',pkg:'org.mozilla.firefox',tint:'6'}
+];
+
+const SC = [
+  {id:'healthy', label:'Everything healthy'},
+  {id:'deferred', label:'One app deferred'},
+  {id:'recovered', label:'Qidi just recovered'},
+  {id:'sentinel', label:'Backup sentinel gone'},
+  {id:'perm', label:'Shizuku permission gone'},
+  {id:'dead', label:'Shizuku not responding'},
+  {id:'off', label:'Protection off'},
+  {id:'firstrun', label:'First run'}
+];
+
+const HERO = {
+  healthy:{st:'ok',chip:'Protected',title:'All 7 apps running',sub:'Everything Qidi watches is alive. Nothing has needed you.'},
+  deferred:{st:'ok',chip:'Protected',title:'6 running, 1 queued',sub:'Nextcloud has no invisible way to start, so Qidi is holding it until your screen turns off rather than interrupting you.'},
+  recovered:{st:'ok',chip:'Protected',title:'All 7 apps running',sub:'Everything Qidi watches is alive. Nothing has needed you.'},
+  sentinel:{st:'wait',chip:'Attention',title:'Protection is thinner than usual',sub:'Your apps are running, but nothing is watching Qidi itself. If Qidi is killed now, it stays dead until you open it.'},
+  perm:{st:'bad',chip:'Broken',title:'Shizuku permission was revoked',sub:'Qidi cannot run privileged commands, so nothing is being protected right now.'},
+  dead:{st:'bad',chip:'Broken',title:'Shizuku is not responding',sub:'Qidi has no privileged access and cannot restart anything. Start the Shizuku service and protection resumes on its own.'},
+  off:{st:'off',chip:'Off',title:'Protection is off',sub:'You turned Qidi off at 08:02. Nothing is being watched.'},
+  firstrun:{st:'off',chip:'Not set up',title:'Nothing to protect yet',sub:'Choose the apps that must stay alive. Qidi always protects itself.'}
+};
+
+const CHECKED = {
+  healthy:'Checked 12 seconds ago', deferred:'Checked 8 seconds ago', recovered:'Checked 4 seconds ago',
+  sentinel:'Checked 20 seconds ago', perm:'Last successful check 6 minutes ago',
+  dead:'Last successful check 11 minutes ago', off:'Not checking', firstrun:'Not checking'
+};
+
+class Component extends DCLogic {
+  state = {
+    sc: 'healthy', screen: 'status', theme: 'dark', shade: false, q: '',
+    on: Object.fromEntries(APPS.map(a => [a.id, !!a.def])),
+    checking: false, checkedOverride: null, dismissed: false, notifOpen: false,
+    log: true, alerts: true, screenOff: true, logSize: '4.2 MB'
+  };
+
+  set(p){ this.setState(p); }
+
+  pickSc(id){
+    const on = Object.fromEntries(APPS.map(a => [a.id, id === 'firstrun' ? a.id === 'qidi' : !!a.def]));
+    this.setState({sc:id, on, dismissed:false, checkedOverride:null, checking:false, q:'',
+      screen: id === 'firstrun' && this.state.screen === 'settings' ? 'status' : this.state.screen});
+  }
+
+  recover(){
+    this.setState({checking:true});
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({checking:false, checkedOverride:'Checked just now'}), 1400);
+  }
+
+  componentWillUnmount(){ clearTimeout(this._t); }
+
+  appState(id){
+    const sc = this.state.sc;
+    if (sc === 'off' || sc === 'firstrun') return {st:'off', label:'Not watched'};
+    if (sc === 'perm' || sc === 'dead') return id === 'qidi' ? {st:'ok', label:'Running'} : {st:'bad', label:'Unprotected'};
+    if (sc === 'deferred' && id === 'nc') return {st:'ok', label:'Queued for screen off'};
+    return {st:'ok', label:'Running'};
+  }
+
+  checksFor(sc){
+    const fix = (to) => () => this.pickSc(to);
+    const rows = [];
+    if (sc === 'perm') rows.push({key:'sz',label:'Shizuku',value:'Permission needed',st:'bad',action:'Grant',hint:'Shizuku is running but has not authorised Qidi.',fix:fix('healthy')});
+    else if (sc === 'dead') rows.push({key:'sz',label:'Shizuku',value:'Not responding',st:'bad',action:'Open Shizuku',hint:'Its service is not running. Start it and Qidi resumes by itself.',fix:fix('healthy')});
+    else rows.push({key:'sz',label:'Shizuku',value:'Ready',st:'ok'});
+
+    if (sc === 'off') rows.push({key:'wd',label:'Watchdog',value:'Stopped',st:'off',action:'Start',hint:'No apps are being checked while this is off.',fix:fix('healthy')});
+    else if (sc === 'firstrun') rows.push({key:'wd',label:'Watchdog',value:'Waiting',st:'off'});
+    else if (sc === 'dead') rows.push({key:'wd',label:'Watchdog',value:'Idle',st:'wait'});
+    else rows.push({key:'wd',label:'Watchdog',value:'Running',st:'ok'});
+
+    const alwaysRow = (this.props.sentinelProminence || 'Quiet until missing') === 'Always a row';
+    if (sc === 'sentinel') rows.push({key:'sn',label:'Backup sentinel',value:'Missing',st:'wait',action:'Reinstall',hint:'It is what restarts Qidi when Qidi is the app that got killed.',fix:fix('healthy')});
+    else if (alwaysRow) rows.push({key:'sn',label:'Backup sentinel',value:'Active',st:'ok'});
+    return rows;
+  }
+
+  renderVals(){
+    const s = this.state, sc = s.sc;
+    const hero = HERO[sc];
+    const dark = s.theme === 'dark';
+    const isOff = sc === 'off', isFirst = sc === 'firstrun';
+    const checks = this.checksFor(sc).map(c => ({
+      ...c, hlStr: c.action ? 'true' : 'false', showAction: !!c.action,
+      aria: c.label + ' is ' + c.value
+    }));
+    const quietRow = !checks.some(c => c.key === 'sn');
+    const quietNote = sc === 'off' || isFirst ? 'Backup sentinel idle — it wakes with protection.'
+      : (sc === 'dead' ? 'Backup sentinel active — it will restart Qidi if it dies too.'
+      : 'Backup sentinel active · verified 09:12');
+
+    const prot = APPS.filter(a => s.on[a.id]);
+    const q = s.q.trim().toLowerCase();
+    const match = a => !q || a.name.toLowerCase().includes(q) || a.pkg.toLowerCase().includes(q);
+    const decorate = a => {
+      const st = this.appState(a.id);
+      return {...a, initial: a.name[0], st: st.st, stateLabel: st.label,
+        locked: !!a.locked, togglable: !a.locked,
+        aria: (s.on[a.id] ? 'Stop protecting ' : 'Protect ') + a.name,
+        toggle: () => this.setState(p => ({on: {...p.on, [a.id]: !p.on[a.id]}}))};
+    };
+    const protectedApps = prot.filter(match).map(decorate);
+    const otherApps = APPS.filter(a => !s.on[a.id]).filter(match).map(decorate);
+
+    const runningCount = isOff || isFirst ? 0 : (sc === 'perm' || sc === 'dead' ? 1 : (sc === 'deferred' ? prot.length - 1 : prot.length));
+    const summarySub = isOff ? 'Nothing is being checked while protection is off'
+      : sc === 'deferred' ? (runningCount + ' running · 1 waiting for screen off')
+      : (sc === 'perm' || sc === 'dead') ? 'None protected while Shizuku is unavailable'
+      : (runningCount + ' running now');
+
+    const notifOn = !isOff && !isFirst;
+    const degraded = sc === 'sentinel' || sc === 'deferred';
+    const notifTitle = (sc === 'perm' || sc === 'dead') ? 'Qidi · not protecting' : 'Qidi · protecting ' + prot.length + ' apps';
+    const notifBody = sc === 'deferred' ? '1 waiting for screen off'
+      : sc === 'sentinel' ? 'Backup sentinel missing'
+      : (sc === 'perm' || sc === 'dead') ? 'Waiting for Shizuku' : 'Ongoing · silent';
+
+    return {
+      scenarios: SC.map(x => ({...x, selStr: x.id === sc ? 'true' : 'false', pick: () => this.pickSc(x.id)})),
+      screens: [['status','Status'],['apps','Apps'],['settings','Settings']].map(([id,label]) => ({
+        label, selStr: id === s.screen ? 'true' : 'false', pick: () => this.set({screen:id})})),
+      themeAttr: s.theme, isDark: dark, monoAttr: (this.props.statusPalette || 'Semantic') === 'Monochrome' ? '1' : '0',
+      themeLabel: dark ? 'Dark theme' : 'Light theme', toggleTheme: () => this.set({theme: dark ? 'light' : 'dark'}),
+      shade: s.shade, shadeStr: s.shade ? 'true' : 'false', shadeLabel: s.shade ? 'Hide shade' : 'Notification shade',
+      toggleShade: () => this.set({shade: !s.shade}),
+
+      isStatus: s.screen === 'status', isApps: s.screen === 'apps', isSettings: s.screen === 'settings',
+      goSettings: () => this.set({screen:'settings'}), goApps: () => this.set({screen:'apps'}), goStatus: () => this.set({screen:'status'}),
+
+      heroSt: hero.st, heroChip: hero.chip, heroTitle: hero.title, heroSub: hero.sub,
+      heroOk: hero.st === 'ok', heroWait: hero.st === 'wait', heroBad: hero.st === 'bad', heroOff: hero.st === 'off',
+      checkedLabel: s.checking ? 'Checking now…' : (s.checkedOverride || CHECKED[sc]),
+      showRecovered: sc === 'recovered' && !s.dismissed, dismissRecovered: () => this.set({dismissed:true}),
+
+      checks, hasQuiet: quietRow, quietNote,
+      showSummary: !isFirst, summaryTitle: prot.length + ' apps protected',
+      summarySub, summaryIcons: prot.slice(0,5).map(a => ({...a, initial: a.name[0]})),
+      showActivityLine: (this.props.showActivity ?? true) && !isFirst && !isOff,
+      activityLine: sc === 'perm' || sc === 'dead' ? '9 recoveries in the last 24 hours · none since Shizuku stopped responding at 09:30'
+        : '12 recoveries in the last 24 hours · most recent 09:14',
+
+      primaryLabel: isFirst ? 'Choose apps to protect' : isOff ? 'Start protection' : 'Stop protection',
+      primaryAction: isFirst ? () => this.set({screen:'apps'}) : isOff ? () => this.pickSc('healthy') : () => this.pickSc('off'),
+      showRecover: !isOff && !isFirst, recoverLabel: s.checking ? 'Checking…' : 'Recover now', recoverNow: () => this.recover(),
+
+      q: s.q, onSearch: e => this.set({q: e.target.value}),
+      protectedApps, otherApps, hasProtected: protectedApps.length > 0, hasOthers: otherApps.length > 0,
+      appsEmpty: protectedApps.length === 0 && !q,
+      protectedHeading: 'Protected · ' + prot.length,
+
+      settingRows: [
+        {key:'log', label:'Record diagnostic log', sub:'Only needed when something goes wrong. It writes continuously and uses storage.', hasToggle:true, onStr: s.log ? 'true':'false', aria:'Record diagnostic log', toggle: () => this.set({log: !s.log}), showLog: s.log},
+        {key:'alerts', label:'Alert me to problems', sub:'Sound for things you must act on. Never for routine restarts.', hasToggle:true, onStr: s.alerts ? 'true':'false', aria:'Alert me to problems', toggle: () => this.set({alerts: !s.alerts})},
+        {key:'status', label:'Status notification', sub:'Android requires it while Qidi runs — and its disappearance is how you know Qidi was killed. That is why it cannot be turned off.', locked:true},
+        {key:'so', label:'Only launch apps while the screen is off', sub:'Qidi waits rather than throwing an app in front of you. Turning this off lets it launch visibly.', hasToggle:true, onStr: s.screenOff ? 'true':'false', aria:'Only launch apps while the screen is off', toggle: () => this.set({screenOff: !s.screenOff})}
+      ],
+      logSize: s.logSize, deleteLog: () => this.set({logSize: '0 B'}),
+
+      notifStatus: notifOn, notifSt: (sc === 'perm' || sc === 'dead') ? 'off' : degraded ? 'wait' : 'ok',
+      notifTitle, notifBody, notifExpanded: s.notifOpen, toggleNotif: () => this.set({notifOpen: !s.notifOpen}),
+      notifDots: prot.map(a => ({initial: a.name[0], name: a.name, st: this.appState(a.id).st})),
+      notifDetail: 'Last check 09:41:07 · next in 20s · 12 recoveries today',
+      notifAlert: sc === 'perm' || sc === 'dead' || sc === 'sentinel',
+      alertTitle: sc === 'sentinel' ? 'Backup sentinel is missing' : sc === 'perm' ? 'Shizuku permission was revoked' : 'Shizuku is not responding',
+      alertBody: sc === 'sentinel' ? 'Nothing will restart Qidi if it is killed. Reinstall it from Qidi.'
+        : sc === 'perm' ? 'Grant Qidi permission in Shizuku to resume protection.'
+        : 'Open Shizuku and start the service. Protection resumes automatically.',
+      alertAction: sc === 'sentinel' ? 'Reinstall' : 'Open Shizuku',
+      notifSentinel: sc === 'recovered',
+      notifNone: !notifOn,
+      noneReason: isFirst ? 'Qidi has not started protecting yet, so no service is running.'
+        : 'Protection is off, so the foreground service — and its notification — are gone. Same silhouette as a killed Qidi: that is the trade-off of the dead man\'s switch.'
+    };
+  }
+}
+</script>
+</body>
+</html>
