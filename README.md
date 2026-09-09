@@ -53,7 +53,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Releases
 
-Pushing a tag that starts with `v` builds the APK and publishes it as a GitHub release:
+Pushing a tag that starts with `v` builds a signed APK and publishes it as a GitHub release:
 
 ```bash
 git tag v0.2.0
@@ -62,9 +62,44 @@ git push origin v0.2.0
 
 The workflow lives in [.github/workflows/release.yml](.github/workflows/release.yml).
 
-The published APK is **debug-signed** — installable, but not suitable for distribution beyond
-personal use. To ship a properly signed build, add a keystore to the repository secrets and
-switch the workflow to `assembleRelease` with a matching `signingConfig`.
+### Signing setup
+
+Releases are signed with a keystore supplied through repository secrets, so the same key is
+used every time and each release can update the previous one. Generate a keystore once:
+
+```bash
+keytool -genkeypair -v \
+  -keystore qidi-release.jks \
+  -alias qidi \
+  -keyalg RSA -keysize 2048 -validity 10000
+```
+
+Then add four repository secrets under **Settings → Secrets and variables → Actions**:
+
+| Secret | Value |
+| --- | --- |
+| `KEYSTORE_BASE64` | `base64 -w0 qidi-release.jks` |
+| `KEYSTORE_PASSWORD` | the keystore password |
+| `KEY_ALIAS` | `qidi` |
+| `KEY_PASSWORD` | the key password |
+
+Keep `qidi-release.jks` backed up somewhere safe and out of the repository — Android identifies
+an app by its signature, so losing the key means future releases can no longer update an
+existing install. The workflow fails fast if the secrets are missing rather than publishing an
+APK nobody can upgrade to.
+
+To build a signed APK locally:
+
+```bash
+QIDI_KEYSTORE=/path/to/qidi-release.jks \
+QIDI_KEYSTORE_PASSWORD=... \
+QIDI_KEY_ALIAS=qidi \
+QIDI_KEY_PASSWORD=... \
+./gradlew assembleRelease
+```
+
+Without those variables `assembleRelease` produces an unsigned APK, while `assembleDebug` is
+unaffected.
 
 ## Project layout
 

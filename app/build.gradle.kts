@@ -21,6 +21,27 @@ android {
         compose = true
     }
 
+    // Release signing comes from the environment so no key material lives in the repo.
+    val keystorePath: String? = System.getenv("QIDI_KEYSTORE")
+
+    signingConfigs {
+        create("release") {
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("QIDI_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("QIDI_KEY_ALIAS")
+                keyPassword = System.getenv("QIDI_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = false
+            signingConfig = if (keystorePath != null) signingConfigs.getByName("release") else null
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11

@@ -26,3 +26,7 @@ pid-oem-processes-*.txt
 
 # Design tool exports
 docs/*.zip
+
+# Signing keys must never be committed
+*.jks
+*.keystore

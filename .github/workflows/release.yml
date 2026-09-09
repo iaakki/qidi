@@ -21,14 +21,36 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # Debug-signed: installable without managing a keystore in CI.
-      - name: Build APK
-        run: ./gradlew --no-daemon assembleDebug
+      - name: Check signing secrets are present
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "KEYSTORE_BASE64 is not set. Add the signing secrets listed in the README." >&2
+            exit 1
+          fi
+
+      - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/qidi-release.jks"
+
+      - name: Build signed APK
+        env:
+          QIDI_KEYSTORE: ${{ runner.temp }}/qidi-release.jks
+          QIDI_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          QIDI_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          QIDI_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew --no-daemon assembleRelease
 
       - name: Name the artifact after the tag
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk "dist/qidi-${GITHUB_REF_NAME}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "dist/qidi-${GITHUB_REF_NAME}.apk"
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/qidi-release.jks"
 
       - uses: softprops/action-gh-release@v2
         with:
