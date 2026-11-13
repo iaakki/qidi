@@ -88,9 +88,15 @@ there too.
 - No Smart Manager force-stops since 2026-09-29. The active killer is now **TGuard**
   (`com.tcl.guard`, exit description `tguard-kill`). It is a memory-pressure killer with an
   "auto restart" allowlist it skips (`skipped kill as auto restart:<pkg>` in logcat).
-  Lead to investigate on the device: `dumpsys activity exit-info` prints
-  `dumpKillWhiteList: [<pkg>]` before its output, a TCL kill allowlist. Find out what feeds
-  it, and whether `shell` can add to it.
+  Investigated 2026-11-13. **No shell-side lever found:**
+  - `content://com.tcl.providers.config/TGuard` needs `com.tcl.providers.config.CONTROL_FEATURE_SERVICE_PER`.
+  - `dumpsys tguard` prints nothing, and `cmd tguard` has no shell commands.
+  - `dumpKillWhiteList` (printed at the top of `dumpsys activity` / `exit-info`) holds one
+    fixed vendor package.
+  - TGuard's "auto restart" skip list included three apps that Qidi revives quickly. It
+    probably spares apps that come straight back.
+  - TGuard's victims die at adj 905 (cached, nothing running). User-side mitigation: have the
+    app run a foreground service, for example the app's own "persistent connection" setting.
 - **`shizuku_server` died of OutOfMemoryError about every 8 h** (`ParcelFileDescriptor Transfer
   Thread`). Cause: the Shizuku client caches every `newProcess` result in a static set that
   is only cleared when the server dies, so the server leaked one `RemoteProcessHolder` per
