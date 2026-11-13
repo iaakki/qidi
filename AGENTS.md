@@ -199,6 +199,15 @@ Each of these was confirmed on the device.
   sentinel could only revive Qidi via the screen-off activity fallback. Since v0.3.4 the
   service is exported behind `android.permission.DUMP`, which `shell` holds and ordinary
   apps cannot get.
+- **Started through its service, Qidi never receives Shizuku's binder** (2/2 tries). Shizuku
+  sends the binder once, when the app's uid starts (`BinderSender: Uid N starts`). For a
+  service start that is before Qidi's provider is published (`provider is null app.qidi.shizuku`),
+  and the send is never retried. A **foreground activity** makes Shizuku send again (per-pid
+  path); opening `MainActivity` delivered the binder to the same stuck process within 2 s. So
+  since v0.3.5 the sentinel restarts Qidi via the activity while the screen is off and via the
+  service while it is on. A Qidi without a binder writes
+  `/sdcard/Android/data/app.qidi/files/shizuku-binder-missing`, and the sentinel opens the
+  activity at the next screen-off (at most every 5 min).
 - **Shizuku can be restarted from `shell` with no PC.** Its APK ships the starter as a native
   library; running it re-launches `shizuku_server`:
 
@@ -280,7 +289,8 @@ Each of these was confirmed on the device.
 
 - `main` is at the `v0.2.1` tag. Branch `fix/shizuku-userservice` carries the
   Shizuku leak fix: `v0.3.0` (UserService, broken on this device), `v0.3.1`
-  (session, piled up shells) and `v0.3.2` (session reused; the intended fix).
+  (session, piled up shells) and `v0.3.2` (session reused; the intended fix),
+  then v0.3.3–v0.3.5 diagnostics and restart fixes.
 - The device runs a **signed release** build, so `run-as` is unavailable there.
 - `v0.2.0`'s published release asset is **debug-signed and cannot update any install** — it
   should be deleted from GitHub along with its tag.

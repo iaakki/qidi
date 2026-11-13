@@ -10,6 +10,7 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import rikka.shizuku.Shizuku
 import java.text.SimpleDateFormat
 import java.util.ArrayDeque
@@ -28,6 +29,7 @@ class QidiWatchdogService : Service() {
     private var lastSentinelEnsureAt = 0L
     private var lastLoggedStatus: String? = null
     private var publishedPackages: List<String>? = null
+    private var binderMissingSince = 0L
     private val restartHistory = mutableMapOf<String, ArrayDeque<Long>>()
     private val lastKnownRunning = mutableMapOf<String, Boolean>()
     private val lastLoggedState = mutableMapOf<String, String>()
@@ -79,6 +81,7 @@ class QidiWatchdogService : Service() {
 
     private fun stopWatchdog() {
         QidiSettings.setWatchdogEnabled(this, false)
+        QidiLogFiles.setBinderMissing(this, false)
         ShizukuShell.run(QidiCommands.stopSentinelCommand())
         QidiWatchdogScheduler.cancelRecoveryAlarm(this)
         QidiSettings.setWatchdogStatus(this, "Watchdog stopped at ${timestamp()}.")
@@ -96,8 +99,14 @@ class QidiWatchdogService : Service() {
         if (!Shizuku.pingBinder()) {
             updateStatus("Watchdog waiting: Shizuku binder is not available.", recordEvent = true)
             publishUnavailable("Waiting for Shizuku")
-            QidiNotifications.updateProblem(this, QidiNotifications.Problem.SHIZUKU_DEAD)
+            handleMissingBinder()
             return
+        }
+        if (binderMissingSince != 0L) {
+            val waited = (SystemClock.elapsedRealtime() - binderMissingSince) / 1000
+            QidiFieldLog.append(this, "shizuku-binder received after ${waited}s")
+            binderMissingSince = 0L
+            QidiLogFiles.setBinderMissing(this, false)
         }
         if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
             updateStatus("Watchdog waiting: Shizuku permission is not granted.", recordEvent = true)
@@ -222,6 +231,24 @@ class QidiWatchdogService : Service() {
         publishHeartbeat(packages.size, deferred.size, sentinelMissing)
     }
 
+    /**
+     * Started through its service, Qidi never gets Shizuku's binder (see the sentinel's
+     * ensure_qidi). Flag it for the sentinel, which opens Qidi's activity once the screen is
+     * off, and alert only if that has not helped within a couple of minutes.
+     */
+    private fun handleMissingBinder() {
+        val now = SystemClock.elapsedRealtime()
+        if (binderMissingSince == 0L) {
+            binderMissingSince = now
+            QidiFieldLog.append(this, "shizuku-binder missing")
+        }
+        val missingFor = now - binderMissingSince
+        if (missingFor >= BINDER_MARKER_AFTER_MS) QidiLogFiles.setBinderMissing(this, true)
+        if (missingFor >= SHIZUKU_ALERT_AFTER_MS) {
+            QidiNotifications.updateProblem(this, QidiNotifications.Problem.SHIZUKU_DEAD)
+        }
+    }
+
     private fun publishProtectedPackages(packages: List<String>) {
         val payload = packages.sorted()
         if (payload == publishedPackages) return
@@ -344,6 +371,8 @@ class QidiWatchdogService : Service() {
         private const val HEARTBEAT_INTERVAL_MS = 6 * 60 * 60 * 1000L
         private const val SENTINEL_ENSURE_INTERVAL_MS = 5 * 60 * 1000L
         private const val FIELD_LOG_VALUE_LIMIT = 700
+        private const val BINDER_MARKER_AFTER_MS = 30_000L
+        private const val SHIZUKU_ALERT_AFTER_MS = 120_000L
         private val PACKAGE_NAME_PATTERN = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
     }
 }

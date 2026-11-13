@@ -121,6 +121,8 @@ object QidiCommands {
         QIDI_ACTION=${QidiWatchdogService.ACTION_START}
         WAKE_ACTION=app.qidi.action.WAKE
         SHIZUKU=moe.shizuku.privileged.api
+        BINDER_MARKER=/sdcard/Android/data/app.qidi/files/${QidiLogFiles.BINDER_MISSING_MARKER}
+        last_binder_kick=0
 
         log() { echo "＄(date '+%F %T') ＄1" >> "＄LOG"; }
 
@@ -202,17 +204,30 @@ object QidiCommands {
           return 1
         }
 
+        # Shizuku hands its binder to an app when the app's uid starts. If Qidi is started through
+        # its service that happens before Qidi can receive it, the send is never retried, and Qidi
+        # runs without Shizuku. A foreground activity makes Shizuku send again. So: start via the
+        # activity while the screen is off; via the service (no screen takeover) while it is on,
+        # and let Qidi flag a missing binder for an activity kick once the screen is off.
         ensure_qidi() {
           if stopped "＄QIDI" || ! running "＄QIDI"; then
             log "restarting ＄QIDI [＄(last_exit "＄QIDI")]"
             cmd package unstop --user 0 "＄QIDI" >/dev/null 2>&1
-            am start-foreground-service --user 0 -a "＄QIDI_ACTION" -n "＄QIDI_SERVICE" >/dev/null 2>&1
-            sleep 2
-            if ! running "＄QIDI" && ! screen_awake; then
+            if screen_awake; then
+              am start-foreground-service --user 0 -a "＄QIDI_ACTION" -n "＄QIDI_SERVICE" >/dev/null 2>&1
+            else
               am start --user 0 -n "＄QIDI/.MainActivity" >/dev/null 2>&1
-              log "＄QIDI activity fallback while screen off"
+              log "＄QIDI activity start while screen off"
             fi
+            return 0
           fi
+          [ -f "＄BINDER_MARKER" ] || return 0
+          screen_awake && return 0
+          now=＄(date +%s)
+          [ ＄((now - last_binder_kick)) -ge 300 ] || return 0
+          last_binder_kick=＄now
+          am start --user 0 -n "＄QIDI/.MainActivity" >/dev/null 2>&1
+          log "＄QIDI has no Shizuku binder; activity start while screen off"
         }
 
         if [ "＄1" = "start" ] && [ -n "＄2" ]; then

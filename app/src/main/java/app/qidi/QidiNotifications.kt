@@ -82,7 +82,7 @@ object QidiNotifications {
                     "Grant Qidi permission in Shizuku to resume protection."
             Problem.SHIZUKU_DEAD ->
                 "Shizuku is not responding" to
-                    "Open Shizuku and start the service. Protection resumes automatically."
+                    "Tap to reconnect. If that does not help, open Shizuku and start the service."
             Problem.SENTINEL_MISSING ->
                 "Backup sentinel is missing" to
                     "Nothing will restart Qidi if it is killed. Reinstall it from Qidi."

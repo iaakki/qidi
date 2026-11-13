@@ -4,13 +4,16 @@ import android.content.Context
 import java.io.File
 
 /**
- * Where Qidi keeps its diagnostic logs: app-specific external storage
- * (`/sdcard/Android/data/app.qidi/files/`). `adb pull` can read it on release builds, where
+ * Where Qidi keeps its diagnostic logs and the sentinel's marker files: app-specific external
+ * storage (`/sdcard/Android/data/app.qidi/files/`). `adb pull` can read it on release builds, where
  * `run-as` is not available. Other apps cannot read it, and Android deletes it on uninstall.
  */
 object QidiLogFiles {
     const val EVENT_LOG = "qidi-events.log"
     const val FIELD_LOG = "qidi-field-events.log"
+
+    /** Present while the watchdog runs without Shizuku's binder; read by the shell sentinel. */
+    const val BINDER_MISSING_MARKER = "shizuku-binder-missing"
 
     fun file(context: Context, name: String): File = File(dir(context), name)
 
@@ -27,6 +30,11 @@ object QidiLogFiles {
                 old.delete()
             }
         }
+    }
+
+    fun setBinderMissing(context: Context, missing: Boolean) {
+        val marker = file(context, BINDER_MISSING_MARKER)
+        runCatching { if (missing) marker.writeText("") else marker.delete() }
     }
 
     private fun dir(context: Context): File = context.getExternalFilesDir(null) ?: context.filesDir
