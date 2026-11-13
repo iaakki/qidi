@@ -74,9 +74,8 @@ The script is the single source of truth for restart logic — `QidiWatchdogServ
 app/src/main/java/app/qidi/
   QidiWatchdogService.kt   polling loop, restart decisions, rate limiting
   QidiCommands.kt          every shell command + the sentinel script (generated as a string)
-  ShizukuShell.kt          runs commands via Shizuku; returns exit code + stdout/stderr
-  QidiShellService.kt      Shizuku UserService (uid shell) that ShizukuShell sends commands to;
-                           replaces Shizuku.newProcess, which leaked memory in shizuku_server
+  ShizukuShell.kt          runs commands in one long-lived Shizuku `sh` session (one
+                           newProcess per command leaked memory in shizuku_server)
   QidiNotifications.kt     two channels: silent heartbeat, problem alerts
   QidiSettings.kt          prefs, recovery counters, toggles
   QidiEventLog.kt          human-readable event log (gated by the logging toggle)
@@ -275,8 +274,8 @@ Each of these was confirmed on the device.
 
 ## 11. Current state and open items
 
-- `main` is at the `v0.2.1` tag. Branch `fix/shizuku-userservice` carries `0.3.0` (the
-  Shizuku UserService fix), pending a `v0.3.0` tag.
+- `main` is at the `v0.2.1` tag. Branch `fix/shizuku-userservice` carries the
+  Shizuku leak fix: `v0.3.0` (UserService, broken on this device) and `v0.3.1` (shell session).
 - The device runs a **signed release** build, so `run-as` is unavailable there.
 - `v0.2.0`'s published release asset is **debug-signed and cannot update any install** — it
   should be deleted from GitHub along with its tag.

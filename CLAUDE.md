@@ -90,10 +90,12 @@ where `adb` can read it. Another is a share intent. Either is a product decision
 - **`shizuku_server` died of OutOfMemoryError about every 8 h** (`ParcelFileDescriptor Transfer
   Thread`). Cause: the Shizuku client caches every `newProcess` result in a static set that
   is only cleared when the server dies, so the server leaked one `RemoteProcessHolder` per
-  command (~15 per 15 s cycle). **Fix:** `ShizukuShell` now runs commands through the
-  `QidiShellService` UserService (one binder, local child processes); `newProcess` is only a
-  fallback. Never make `newProcess` the main path again. The fix is not yet verified on the
-  device: watch `VmRSS` of `shizuku_server` stay flat.
+  command (~15 per 15 s cycle). **Fix (v0.3.1):** `ShizukuShell` keeps one long-lived `sh`
+  session and sends each command to it framed by a random marker. Never go back to one
+  `newProcess` per command. To verify, watch `VmRSS` of `shizuku_server` stay flat.
+- **Shizuku UserService does not work on this device** (tried in v0.3.0). Shizuku's
+  `ServiceStarter` crashes with an NPE in `LoadedApk.makeApplicationInner` on Android 16 /
+  Shizuku 13.6.0 before any app code runs. Do not retry it without new evidence.
 - Most sentinel restarts answer `TOO MANY EMPTY PROCS` (normal cached-process trimming). They
   ping-pong every 20–30 min and achieve nothing.
 
