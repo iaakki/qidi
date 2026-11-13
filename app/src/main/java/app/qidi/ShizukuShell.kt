@@ -34,18 +34,27 @@ object ShizukuShell {
         Thread(runnable, "qidi-shell-timeout").apply { isDaemon = true }
     }
 
-    /** Blocks until the command finishes; call it off the main thread. Calls are serialised. */
+    /**
+     * Blocks until the command finishes; call it off the main thread. Calls are serialised.
+     *
+     * The session is reused until a command fails on it. Do not probe it with `exitValue()`:
+     * over Shizuku's binder the "still running" IllegalThreadStateException arrives as a
+     * different exception type, which made v0.3.1 open a new session for every command.
+     */
     fun run(command: String): ShellResult = synchronized(lock) {
-        val current = session?.takeIf { it.isAlive() } ?: openSession()
-            ?: return ShellResult(-1, "", "qidi: Shizuku shell is not available")
-        session = current
-        val result = current.exec(command)
-        if (result == null) {
-            current.close()
+        session?.let { existing ->
+            existing.exec(command)?.let { return it }
+            existing.close()
             session = null
-            return ShellResult(-1, "", "qidi: shell session failed or timed out")
         }
-        result
+        // No session, or it broke (e.g. shizuku_server restarted): open one and retry once.
+        val fresh = openSession() ?: return ShellResult(-1, "", "qidi: Shizuku shell is not available")
+        session = fresh
+        fresh.exec(command) ?: run {
+            fresh.close()
+            session = null
+            ShellResult(-1, "", "qidi: shell session failed or timed out")
+        }
     }
 
     fun quote(value: String): String {
@@ -113,15 +122,6 @@ object ShizukuShell {
             } finally {
                 timeout.cancel(false)
             }
-        }
-
-        fun isAlive(): Boolean = try {
-            process.exitValue()
-            false
-        } catch (stillRunning: IllegalThreadStateException) {
-            true
-        } catch (error: Throwable) {
-            false
         }
 
         fun close() {
