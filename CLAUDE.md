@@ -72,9 +72,9 @@ there too.
 
 ## Known gaps found in the code (not yet acted on)
 
-- **`screen_off_only` setting is not enforced.** `QidiSettings.isScreenOffOnly` is shown in
-  Settings but nothing in the watchdog or the sentinel reads it. The sentinel always defers
-  while the screen is on.
+- `screen_off_only` is enforced since v0.3.6: when it is off, Qidi creates
+  `/sdcard/Android/data/app.qidi/files/allow-visible-launch` and the sentinel may then launch
+  apps visibly while the screen is on, instead of deferring them.
 - `QidiEventLog.recent()` / `QidiFieldLog.recent()` have no callers.
 - Restart rate limiting (`3 per 60 s`) and `lastKnownRunning` are in memory, so they reset
   every time Qidi is force-stopped. That happens on every Smart Manager batch.

@@ -38,7 +38,8 @@ object QidiSettings {
     fun isScreenOffOnly(context: Context): Boolean = prefs(context).getBoolean(SCREEN_OFF_ONLY_KEY, true)
 
     fun setScreenOffOnly(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean(SCREEN_OFF_ONLY_KEY, enabled).apply()
+        prefs(context).edit().putBoolean(SCREEN_OFF_ONLY_KEY, enabled).commit()
+        QidiLogFiles.syncVisibleLaunch(context)
     }
 
     fun recordRecovery(context: Context, at: Long = System.currentTimeMillis()) {

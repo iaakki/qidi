@@ -122,6 +122,7 @@ object QidiCommands {
         WAKE_ACTION=app.qidi.action.WAKE
         SHIZUKU=moe.shizuku.privileged.api
         BINDER_MARKER=/sdcard/Android/data/app.qidi/files/${QidiLogFiles.BINDER_MISSING_MARKER}
+        VISIBLE_OK=/sdcard/Android/data/app.qidi/files/${QidiLogFiles.VISIBLE_LAUNCH_MARKER}
         last_binder_kick=0
 
         log() { echo "＄(date '+%F %T') ＄1" >> "＄LOG"; }
@@ -176,13 +177,17 @@ object QidiCommands {
             am broadcast --user 0 -n "＄rcv" -a "＄WAKE_ACTION" >/dev/null 2>&1
           fi
           running "＄pkg" && { log "background-start receiver ＄pkg [＄(last_exit "＄pkg")]"; return 0; }
+          when="while screen off"
           if screen_awake; then
-            log "deferred ＄pkg until screen off [＄(last_exit "＄pkg")]"
-            return 1
+            if [ ! -f "＄VISIBLE_OK" ]; then
+              log "deferred ＄pkg until screen off [＄(last_exit "＄pkg")]"
+              return 1
+            fi
+            when="visibly (screen-off-only setting is off)"
           fi
           act=＄(cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p "＄pkg" 2>/dev/null | tail -n 1)
           case "＄act" in
-            */*) am start --user 0 -n "＄act" >/dev/null 2>&1; log "activity-start ＄pkg while screen off [＄(last_exit "＄pkg")]" ;;
+            */*) am start --user 0 -n "＄act" >/dev/null 2>&1; log "activity-start ＄pkg ＄when [＄(last_exit "＄pkg")]" ;;
             *) log "no background entry point for ＄pkg" ;;
           esac
         }

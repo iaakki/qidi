@@ -126,6 +126,8 @@ class QidiWatchdogService : Service() {
             return
         }
         val screenAwake = screenProbe == "true"
+        QidiLogFiles.syncVisibleLaunch(this)
+        val mayLaunchVisibly = !QidiSettings.isScreenOffOnly(this)
 
         val sentinelMissing =
             ShizukuShell.run(QidiCommands.sentinelAliveCommand()).stdout.trim() != "true"
@@ -199,7 +201,7 @@ class QidiWatchdogService : Service() {
                     QidiEventLog.append(this, "Restarted $packageName in the background.")
                     recordIncident(packageName, updatedState, "restart-success")
                 }
-                screenAwake -> {
+                screenAwake && !mayLaunchVisibly -> {
                     deferred.add(packageName)
                     QidiEventLog.append(this, "Deferred $packageName until the screen turns off.")
                     recordIncident(packageName, updatedState, "restart-deferred")
