@@ -18,6 +18,11 @@ object QidiCommands {
         )
     }
 
+    /** All of [protectionCommands] in one shell call; each step runs even if an earlier one fails. */
+    fun protectionCommand(packageName: String): String {
+        return protectionCommands(packageName).joinToString("; ") { "$it >/dev/null 2>&1" }
+    }
+
     fun processStateCommand(packageName: String): String {
         val packageArg = ShizukuShell.quote(packageName)
         return "if pidof $packageArg >/dev/null 2>&1; then echo running; " +

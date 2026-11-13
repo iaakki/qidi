@@ -106,7 +106,7 @@ class QidiWatchdogService : Service() {
             return
         }
 
-        QidiCommands.protectionCommands(packageName).forEach { command -> ShizukuShell.run(command) }
+        ShizukuShell.run(QidiCommands.protectionCommand(packageName))
         ensureShellSentinel()
 
         val screenProbe = ShizukuShell.run(QidiCommands.isScreenAwakeCommand()).stdout.trim()
@@ -179,7 +179,7 @@ class QidiWatchdogService : Service() {
 
             QidiEventLog.append(this, "Restarting $packageName after state=$state.")
             recordIncident(packageName, state, "restart-attempt")
-            QidiCommands.protectionCommands(packageName).forEach { command -> ShizukuShell.run(command) }
+            ShizukuShell.run(QidiCommands.protectionCommand(packageName))
             ShizukuShell.run(QidiCommands.quietRestartCommand(packageName))
             val updatedState = ShizukuShell.run(QidiCommands.processStateCommand(packageName)).stdout.trim()
             when {
