@@ -243,6 +243,8 @@ class QidiWatchdogService : Service() {
         lastSentinelEnsureAt = now
 
         val result = ShizukuShell.run(QidiCommands.installSentinelCommand())
+        // "sentinel-ok" every 5 minutes filled over a third of the field log; record only changes.
+        if (result.exitCode == 0 && result.stdout.trim() == "sentinel-ok") return
         val detail = result.format().compactForLog()
         QidiFieldLog.append(this, "shell-sentinel-ensure $detail")
     }

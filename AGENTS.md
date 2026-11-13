@@ -194,6 +194,11 @@ Each of these was confirmed on the device.
     'index($0,t)>0{f=1;next} f&&index($2,p)==1{print $2;exit}'
   ```
 
+- **`shell` cannot start a non-exported component.** `am start-foreground-service` on Qidi's
+  watchdog failed with `Requires permission not exported from uid ...`, so up to v0.3.3 the
+  sentinel could only revive Qidi via the screen-off activity fallback. Since v0.3.4 the
+  service is exported behind `android.permission.DUMP`, which `shell` holds and ordinary
+  apps cannot get.
 - **Shizuku can be restarted from `shell` with no PC.** Its APK ships the starter as a native
   library; running it re-launches `shizuku_server`:
 
