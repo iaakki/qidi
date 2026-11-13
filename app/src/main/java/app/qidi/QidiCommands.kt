@@ -127,8 +127,8 @@ object QidiCommands {
         trim_log() {
           [ -f "＄LOG" ] || return 0
           n=＄(wc -l < "＄LOG" 2>/dev/null) || return 0
-          [ "＄n" -gt 800 ] || return 0
-          tail -n 400 "＄LOG" > "＄LOG.new" 2>/dev/null && mv "＄LOG.new" "＄LOG"
+          [ "＄n" -gt 6000 ] || return 0
+          tail -n 4000 "＄LOG" > "＄LOG.new" 2>/dev/null && mv "＄LOG.new" "＄LOG"
         }
 
         running() { pidof "＄1" >/dev/null 2>&1; }
@@ -142,6 +142,23 @@ object QidiCommands {
           '
         }
 
+        # Latest exit record of the package's main process, e.g.
+        # "2026-11-13 16:40:33 OTHER KILLS BY SYSTEM/TOO MANY EMPTY PROCS (too many empty)".
+        last_exit() {
+          dumpsys activity exit-info "＄1" 2>/dev/null | awk -v want="＄1" '
+            /timestamp=/ { ts = ＄1 " " ＄2; sub(/^timestamp=/, "", ts) }
+            /^ *process=/ { p = ＄1; sub(/^process=/, "", p); r = ＄0; sub(/^.* reason=/, "", r); sub(/ status=.*＄/, "", r) }
+            /description=/ {
+              if (p == want && ts > best) {
+                best = ts; d = ＄0; sub(/^.*description=/, "", d); sub(/ state=.*＄/, "", d)
+                why = r; sub(/^[0-9-]+ \(/, "", why); sub(/\) subreason=[0-9-]+ \(/, "/", why); sub(/\)＄/, "", why)
+                out = substr(best, 1, 19) " " why " (" d ")"
+              }
+            }
+            END { print (out == "" ? "no exit record" : out) }
+          '
+        }
+
         quiet_start() {
           pkg=＄1
           running "＄pkg" && return 0
@@ -151,19 +168,19 @@ object QidiCommands {
             am start-service --user 0 -n "＄svc" >/dev/null 2>&1 ||
               am start-foreground-service --user 0 -n "＄svc" >/dev/null 2>&1
           fi
-          running "＄pkg" && { log "background-start service ＄pkg"; return 0; }
+          running "＄pkg" && { log "background-start service ＄pkg [＄(last_exit "＄pkg")]"; return 0; }
           rcv=＄(component "＄pkg" "Receiver Resolver Table:")
           if [ -n "＄rcv" ]; then
             am broadcast --user 0 -n "＄rcv" -a "＄WAKE_ACTION" >/dev/null 2>&1
           fi
-          running "＄pkg" && { log "background-start receiver ＄pkg"; return 0; }
+          running "＄pkg" && { log "background-start receiver ＄pkg [＄(last_exit "＄pkg")]"; return 0; }
           if screen_awake; then
-            log "deferred ＄pkg until screen off"
+            log "deferred ＄pkg until screen off [＄(last_exit "＄pkg")]"
             return 1
           fi
           act=＄(cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p "＄pkg" 2>/dev/null | tail -n 1)
           case "＄act" in
-            */*) am start --user 0 -n "＄act" >/dev/null 2>&1; log "activity-start ＄pkg while screen off" ;;
+            */*) am start --user 0 -n "＄act" >/dev/null 2>&1; log "activity-start ＄pkg while screen off [＄(last_exit "＄pkg")]" ;;
             *) log "no background entry point for ＄pkg" ;;
           esac
         }
@@ -187,7 +204,7 @@ object QidiCommands {
 
         ensure_qidi() {
           if stopped "＄QIDI" || ! running "＄QIDI"; then
-            log "restarting ＄QIDI"
+            log "restarting ＄QIDI [＄(last_exit "＄QIDI")]"
             cmd package unstop --user 0 "＄QIDI" >/dev/null 2>&1
             am start-foreground-service --user 0 -a "＄QIDI_ACTION" -n "＄QIDI_SERVICE" >/dev/null 2>&1
             sleep 2

@@ -7,7 +7,7 @@ import java.util.Date
 import java.util.Locale
 
 object QidiEventLog {
-    private const val FILE_NAME = "qidi-events.log"
+    private const val FILE_NAME = QidiLogFiles.EVENT_LOG
     private const val MAX_LINES = 1_000
     private val timestampFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
 
@@ -31,5 +31,5 @@ object QidiEventLog {
         logFile(context).delete()
     }
 
-    private fun logFile(context: Context): File = File(context.filesDir, FILE_NAME)
+    private fun logFile(context: Context): File = QidiLogFiles.file(context, FILE_NAME)
 }

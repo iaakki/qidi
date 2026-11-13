@@ -134,15 +134,13 @@ adb shell 'dumpsys activity exit-info <pkg> | grep -E "timestamp=|process=|impor
 adb shell tail -n 40 /data/local/tmp/qidi-watchdog-sentinel.log
 ```
 
-**Qidi's own logs** — only on **debug** builds, since release builds are not debuggable:
+**Qidi's own logs** — since v0.3.3 in app-specific external storage, readable on release
+builds too:
 
 ```bash
-adb shell 'run-as app.qidi tail -n 40 files/qidi-field-events.log' | cut -c1-200
-adb shell 'run-as app.qidi cat shared_prefs/qidi.xml'
+adb shell tail -n 40 /sdcard/Android/data/app.qidi/files/qidi-field-events.log | cut -c1-200
+adb shell 'run-as app.qidi cat shared_prefs/qidi.xml'   # prefs: debug builds only
 ```
-
-On a release build these files are currently unreachable: the app has no log viewer or
-export (only size + delete). Use the sentinel log and `dumpsys` sources instead.
 
 **Recovery alarm registered?**
 

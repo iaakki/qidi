@@ -35,14 +35,16 @@ needs on top of it. If the two disagree, check the code, then fix whichever file
 
 ## Getting logs off the phone
 
-The device runs a **release** build, so `run-as app.qidi` fails. Qidi's own logs
-(`files/qidi-events.log`, `files/qidi-field-events.log`) are **not reachable right now**.
-There is no export path or log viewer in the app (the UI shows only size + delete), and
-`adb backup` excludes app data for targetSdk ≥ 31. The sources that *are* reachable:
+The device runs a **release** build, so `run-as app.qidi` fails. Since v0.3.3 Qidi writes its
+own logs to app-specific external storage, which `adb` can read on a release build:
+`/sdcard/Android/data/app.qidi/files/qidi-events.log` and `qidi-field-events.log`. Crashes
+are recorded in the field log as `crash thread=... <trace>`. On v0.3.2 and earlier these files
+were in internal storage and unreachable; v0.3.3 moves them on first start. The sources:
 
 | Source | What it shows | Retention |
 | --- | --- | --- |
-| `/data/local/tmp/qidi-watchdog-sentinel.log` | sentinel restarts of Qidi, apps, Shizuku | trimmed to 400 lines once it passes 800 |
+| `/sdcard/Android/data/app.qidi/files/*.log` | Qidi's event log and field log (incidents, crashes) | 1 000 / 2 000 lines |
+| `/data/local/tmp/qidi-watchdog-sentinel.log` | sentinel restarts of Qidi, apps, Shizuku; since v0.3.3 each restart ends with `[<last exit time> <reason>/<subreason> (<description>)]` | trimmed to 4 000 lines once it passes 6 000 (about 3–4 weeks) |
 | `dumpsys activity exit-info <pkg>` | why/when each process died (reason, subreason, description) | last few records per package |
 | `logcat -d -b all` | ActivityManager force-stop lines, kills | hours (ring buffer) |
 | `dumpsys alarm`, `dumpsys deviceidle`, `am get-standby-bucket`, `cmd appops get` | whether the protections held | current state only |
@@ -53,6 +55,7 @@ Collect into a dated folder under `archive/`:
 ```bash
 D=archive/logs-$(date +%F); mkdir -p "$D"
 adb shell cat /data/local/tmp/qidi-watchdog-sentinel.log       > "$D/sentinel.log"
+adb pull /sdcard/Android/data/app.qidi/files/                  "$D/qidi-files"
 adb shell cat /data/local/tmp/qidi-protected-packages.txt      > "$D/protected.txt"
 for p in app.qidi moe.shizuku.privileged.api $(tr -d '\r' < "$D/protected.txt"); do
   adb shell dumpsys activity exit-info "$p"                     > "$D/exit-info-$p.txt"
@@ -66,11 +69,6 @@ adb shell dumpsys package app.qidi | grep -E 'versionName|versionCode|firstInsta
 Check that the phone is connected first (`adb devices`; if the list is empty, `lsusb` should
 show `T951K`). Analyse the data from `archive/` and keep findings that contain package names
 there too.
-
-If Qidi's internal field log is needed, the app needs a way to hand it out first. One option
-fits the existing design: have the watchdog copy it through Shizuku into `/data/local/tmp/`,
-where `adb` can read it. Another is a share intent. Either is a product decision, since
-`AGENTS.md` §9 rules out a log-browsing UI. Ask before building one.
 
 ## Known gaps found in the code (not yet acted on)
 
@@ -90,6 +88,9 @@ where `adb` can read it. Another is a share intent. Either is a product decision
 - No Smart Manager force-stops since 2026-09-29. The active killer is now **TGuard**
   (`com.tcl.guard`, exit description `tguard-kill`). It is a memory-pressure killer with an
   "auto restart" allowlist it skips (`skipped kill as auto restart:<pkg>` in logcat).
+  Lead to investigate on the device: `dumpsys activity exit-info` prints
+  `dumpKillWhiteList: [<pkg>]` before its output, a TCL kill allowlist. Find out what feeds
+  it, and whether `shell` can add to it.
 - **`shizuku_server` died of OutOfMemoryError about every 8 h** (`ParcelFileDescriptor Transfer
   Thread`). Cause: the Shizuku client caches every `newProcess` result in a static set that
   is only cleared when the server dies, so the server leaked one `RemoteProcessHolder` per
