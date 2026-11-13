@@ -2,15 +2,11 @@ package app.qidi
 
 import android.content.pm.PackageManager
 import rikka.shizuku.Shizuku
-import java.io.BufferedReader
-import java.io.Writer
 import java.lang.reflect.Method
-import java.util.UUID
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 
 /**
- * Runs shell commands as uid `shell` through one long-lived `sh` started via Shizuku.
+ * Runs shell commands as uid `shell` through one long-lived [ShellSession] started via Shizuku.
  *
  * Why one session instead of a process per command: the Shizuku client caches every
  * `newProcess` result in a static set that is only cleared when the server dies, so each call
@@ -18,17 +14,13 @@ import java.util.concurrent.TimeUnit
  * OutOfMemoryError about every 8 hours. A session costs one such object per Qidi/Shizuku
  * lifetime. (A Shizuku UserService would be the textbook fix, but its starter crashes on this
  * Android 16 device before reaching app code.)
- *
- * Each command still runs in its own `sh -c` with stdin from /dev/null, so `exit` and
- * background jobs behave as they did with a process per command. Output is framed by a
- * per-call random marker; see [Session.exec].
  */
 object ShizukuShell {
     private const val COMMAND_TIMEOUT_SECONDS = 60L
     private const val STDERR_FILE = "/data/local/tmp/qidi-shell.err"
 
     private val lock = Any()
-    private var session: Session? = null
+    private var session: ShellSession? = null
     private var newProcessMethod: Method? = null
     private val timeouts = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "qidi-shell-timeout").apply { isDaemon = true }
@@ -36,10 +28,8 @@ object ShizukuShell {
 
     /**
      * Blocks until the command finishes; call it off the main thread. Calls are serialised.
-     *
-     * The session is reused until a command fails on it. Do not probe it with `exitValue()`:
-     * over Shizuku's binder the "still running" IllegalThreadStateException arrives as a
-     * different exception type, which made v0.3.1 open a new session for every command.
+     * The session is reused until a command fails on it; then it is replaced and the command
+     * retried once (e.g. after shizuku_server restarted).
      */
     fun run(command: String): ShellResult = synchronized(lock) {
         session?.let { existing ->
@@ -47,7 +37,6 @@ object ShizukuShell {
             existing.close()
             session = null
         }
-        // No session, or it broke (e.g. shizuku_server restarted): open one and retry once.
         val fresh = openSession() ?: return ShellResult(-1, "", "qidi: Shizuku shell is not available")
         session = fresh
         fresh.exec(command) ?: run {
@@ -57,76 +46,16 @@ object ShizukuShell {
         }
     }
 
-    fun quote(value: String): String {
-        return "'${value.replace("'", "'\\''")}'"
-    }
+    fun quote(value: String): String = shellQuote(value)
 
-    private fun openSession(): Session? {
+    private fun openSession(): ShellSession? {
         if (!Shizuku.pingBinder() || Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
             return null
         }
         return try {
-            val process = createProcess(arrayOf("sh"))
-            Session(process).also {
-                // Errors of the session shell itself are never read, so they must not fill a pipe.
-                it.send("exec 2>/dev/null\n")
-            }
+            ShellSession(createProcess(arrayOf("sh")), STDERR_FILE, COMMAND_TIMEOUT_SECONDS, timeouts)
         } catch (error: Throwable) {
             null
-        }
-    }
-
-    private class Session(private val process: Process) {
-        private val writer: Writer = process.outputStream.bufferedWriter()
-        private val reader: BufferedReader = process.inputStream.bufferedReader()
-
-        fun send(text: String) {
-            writer.write(text)
-            writer.flush()
-        }
-
-        /**
-         * Writes `<stdout>\n<marker> <exit>\n<stderr>\n<marker>\n`. Joining the lines before
-         * each marker with "\n" gives back the exact output, because of the "\n" printed
-         * before the marker. Returns null if the session broke or the command timed out.
-         */
-        fun exec(command: String): ShellResult? {
-            val marker = "__QIDI_${UUID.randomUUID().toString().replace("-", "")}__"
-            val timeout = timeouts.schedule({ close() }, COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            return try {
-                send(
-                    "sh -c ${quote(command)} </dev/null 2>$STDERR_FILE\n" +
-                        "printf '\\n%s %s\\n' $marker \$?\n" +
-                        "cat $STDERR_FILE 2>/dev/null\n" +
-                        "printf '\\n%s\\n' $marker\n"
-                )
-                val stdout = mutableListOf<String>()
-                var exitCode: Int? = null
-                while (exitCode == null) {
-                    val line = reader.readLine() ?: return null
-                    if (line.startsWith("$marker ")) {
-                        exitCode = line.substringAfter(' ').trim().toIntOrNull() ?: -1
-                    } else {
-                        stdout.add(line)
-                    }
-                }
-                val stderr = mutableListOf<String>()
-                while (true) {
-                    val line = reader.readLine() ?: return null
-                    if (line == marker) break
-                    stderr.add(line)
-                }
-                ShellResult(exitCode, stdout.joinToString("\n"), stderr.joinToString("\n"))
-            } catch (error: Throwable) {
-                null
-            } finally {
-                timeout.cancel(false)
-            }
-        }
-
-        fun close() {
-            runCatching { writer.close() }
-            runCatching { process.destroy() }
         }
     }
 
@@ -144,17 +73,5 @@ object ShizukuShell {
             }
 
         return method.invoke(null, command, null, null) as Process
-    }
-}
-
-data class ShellResult(
-    val exitCode: Int,
-    val stdout: String,
-    val stderr: String
-) {
-    fun format(): String = buildString {
-        appendLine("exit=$exitCode")
-        if (stdout.isNotBlank()) appendLine(stdout.trim())
-        if (stderr.isNotBlank()) appendLine(stderr.trim())
     }
 }

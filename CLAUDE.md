@@ -26,8 +26,11 @@ needs on top of it. If the two disagree, check the code, then fix whichever file
   sentinel script is regenerated from there and reinstalled by Qidi when its content changes
   (`installSentinelCommand` compares with `cmp`). Never edit the script on the device by hand.
   It will be overwritten.
-- **Verify with a build:** `./gradlew assembleDebug`. There are no unit tests. Changes to shell
-  logic should be dry-run on the device with `adb shell` before being baked into the script.
+- **Verify with** `./gradlew testDebugUnitTest assembleDebug`. The only unit tests cover
+  `ShellSession` (the Shizuku shell protocol) against a local `sh`. Anything that crosses
+  Shizuku's binder cannot be tested off-device: binder changes exception types (that is what
+  broke v0.3.1). Changes to shell logic should be dry-run on the device with `adb shell`
+  before being baked into the script.
 - Commit only when asked. Branch off `main` first.
 
 ## Getting logs off the phone
@@ -90,9 +93,12 @@ where `adb` can read it. Another is a share intent. Either is a product decision
 - **`shizuku_server` died of OutOfMemoryError about every 8 h** (`ParcelFileDescriptor Transfer
   Thread`). Cause: the Shizuku client caches every `newProcess` result in a static set that
   is only cleared when the server dies, so the server leaked one `RemoteProcessHolder` per
-  command (~15 per 15 s cycle). **Fix (v0.3.1):** `ShizukuShell` keeps one long-lived `sh`
-  session and sends each command to it framed by a random marker. Never go back to one
+  command (~15 per 15 s cycle). **Fix (v0.3.2):** `ShizukuShell` keeps one long-lived `sh`
+  session (`ShellSession`) and sends each command to it framed by a random marker. Never go back to one
   `newProcess` per command. To verify, watch `VmRSS` of `shizuku_server` stay flat.
+- v0.3.1 opened a new session per command (an `exitValue()` liveness probe misread across
+  the binder) and piled up ~190 shells in 5 min. Never probe the remote process; reuse the
+  session until a command fails.
 - **Shizuku UserService does not work on this device** (tried in v0.3.0). Shizuku's
   `ServiceStarter` crashes with an NPE in `LoadedApk.makeApplicationInner` on Android 16 /
   Shizuku 13.6.0 before any app code runs. Do not retry it without new evidence.

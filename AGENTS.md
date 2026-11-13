@@ -76,6 +76,7 @@ app/src/main/java/app/qidi/
   QidiCommands.kt          every shell command + the sentinel script (generated as a string)
   ShizukuShell.kt          runs commands in one long-lived Shizuku `sh` session (one
                            newProcess per command leaked memory in shizuku_server)
+  ShellSession.kt          the session protocol; pure JVM, unit-tested in app/src/test
   QidiNotifications.kt     two channels: silent heartbeat, problem alerts
   QidiSettings.kt          prefs, recovery counters, toggles
   QidiEventLog.kt          human-readable event log (gated by the logging toggle)
@@ -275,7 +276,8 @@ Each of these was confirmed on the device.
 ## 11. Current state and open items
 
 - `main` is at the `v0.2.1` tag. Branch `fix/shizuku-userservice` carries the
-  Shizuku leak fix: `v0.3.0` (UserService, broken on this device) and `v0.3.1` (shell session).
+  Shizuku leak fix: `v0.3.0` (UserService, broken on this device), `v0.3.1`
+  (session, piled up shells) and `v0.3.2` (session reused; the intended fix).
 - The device runs a **signed release** build, so `run-as` is unavailable there.
 - `v0.2.0`'s published release asset is **debug-signed and cannot update any install** — it
   should be deleted from GitHub along with its tag.
