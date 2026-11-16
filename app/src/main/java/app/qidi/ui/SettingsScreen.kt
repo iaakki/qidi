@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import app.qidi.BuildConfig
 import app.qidi.QidiSettings
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -139,7 +140,7 @@ fun SettingsScreen(
 
             Column(Modifier.padding(horizontal = Dimens.space2)) {
                 Text(
-                    "Qidi · watching since ${monthDay(installedAt)}",
+                    "Qidi ${BuildConfig.VERSION_NAME} · watching since ${monthDay(installedAt)}",
                     style = QidiTheme.type.secondary,
                     color = colors.muted
                 )
