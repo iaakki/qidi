@@ -208,6 +208,13 @@ Each of these was confirmed on the device.
   service while it is on. A Qidi without a binder writes
   `/sdcard/Android/data/app.qidi/files/shizuku-binder-missing`, and the sentinel opens the
   activity at the next screen-off (at most every 5 min).
+- **Auto-brightness on this device uses `SimpleMappingStrategy`** (lux → backlight spline from
+  vendor config). 0–5 lux maps to brightness 0.0 (~4.4 nits). The auto-brightness adjustment
+  (gamma) cannot lift 0, and a slider change is only a short-term user point that expires.
+  `BrightnessConfiguration` curves do not apply to this strategy. **`cmd display set-brightness X`
+  from shell acts like the slider in auto mode**: it sets `mUserBrightness`/`mUserLux`, keeps
+  `screen_brightness_mode=1`, and recomputes `screen_auto_brightness_adj` (not cumulative).
+  Qidi's optional brightness floor (v0.4.0, off by default) is built on this.
 - **Shizuku can be restarted from `shell` with no PC.** Its APK ships the starter as a native
   library; running it re-launches `shizuku_server`:
 

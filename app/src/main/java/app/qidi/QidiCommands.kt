@@ -58,6 +58,15 @@ object QidiCommands {
         return "sh ${ShizukuShell.quote(SENTINEL_SCRIPT_FILE)} start ${ShizukuShell.quote(packageName)}"
     }
 
+    /** Applies the brightness floor now if the sentinel's conditions hold; see the script. */
+    fun enforceBrightnessFloorCommand(): String = "sh ${ShizukuShell.quote(SENTINEL_SCRIPT_FILE)} floor"
+
+    /** Live preview while tuning the floor slider; only in auto mode, which it keeps on. */
+    fun previewBrightnessCommand(level: Float): String {
+        val value = String.format(java.util.Locale.US, "%.3f", level)
+        return "[ \"＄(settings get system screen_brightness_mode)\" = 1 ] && cmd display set-brightness $value".shellDollars()
+    }
+
     fun startWatchdogServiceCommand(packageName: String): String {
         val actionArg = ShizukuShell.quote(QidiWatchdogService.ACTION_START)
         val serviceArg = ShizukuShell.quote("$packageName/.QidiWatchdogService")
@@ -123,6 +132,7 @@ object QidiCommands {
         SHIZUKU=moe.shizuku.privileged.api
         BINDER_MARKER=/sdcard/Android/data/app.qidi/files/${QidiLogFiles.BINDER_MISSING_MARKER}
         VISIBLE_OK=/sdcard/Android/data/app.qidi/files/${QidiLogFiles.VISIBLE_LAUNCH_MARKER}
+        FLOOR_FILE=/sdcard/Android/data/app.qidi/files/${QidiLogFiles.BRIGHTNESS_FLOOR_FILE}
         last_binder_kick=0
 
         log() { echo "＄(date '+%F %T') ＄1" >> "＄LOG"; }
@@ -235,8 +245,34 @@ object QidiCommands {
           log "＄QIDI has no Shizuku binder; activity start while screen off"
         }
 
+        # Optional auto-brightness floor. This device's curve maps 0-5 lux to backlight 0.0, and
+        # its adjustment cannot lift 0, so in a dark room the screen sits at ~4 nits. When the
+        # floor file exists, auto-brightness is on, the screen is on, the user has not set a
+        # brightness of their own (mUserBrightness=NaN) and auto chose less than the floor, set
+        # the floor the same way the slider does; auto mode stays on.
+        enforce_brightness_floor() {
+          [ -f "＄FLOOR_FILE" ] || return 0
+          floor=＄(cat "＄FLOOR_FILE" 2>/dev/null)
+          case "＄floor" in 0.*) ;; *) return 0 ;; esac
+          [ "＄(settings get system screen_brightness_mode 2>/dev/null)" = "1" ] || return 0
+          screen_awake || return 0
+          auto=＄(dumpsys display 2>/dev/null | awk -v floor="＄floor" '
+            /mUserBrightness=/ && user == "" { user = ＄0; sub(/.*mUserBrightness=/, "", user) }
+            /mScreenAutoBrightness=/ && auto == "" { auto = ＄0; sub(/.*mScreenAutoBrightness=/, "", auto) }
+            END { if (user == "NaN" && auto != "" && auto != "NaN" && auto + 0 < floor + 0) print auto }
+          ')
+          [ -n "＄auto" ] || return 0
+          cmd display set-brightness "＄floor" >/dev/null 2>&1
+          log "brightness floor ＄floor applied (auto chose ＄auto)"
+        }
+
         if [ "＄1" = "start" ] && [ -n "＄2" ]; then
           quiet_start "＄2"
+          exit 0
+        fi
+
+        if [ "＄1" = "floor" ]; then
+          enforce_brightness_floor
           exit 0
         fi
 
@@ -245,6 +281,7 @@ object QidiCommands {
           trim_log
           ensure_shizuku
           ensure_qidi
+          enforce_brightness_floor
           [ -f "＄PKG_LIST" ] || continue
           for pkg in ＄(cat "＄PKG_LIST" 2>/dev/null); do
             [ "＄pkg" = "＄QIDI" ] && continue

@@ -11,8 +11,19 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import app.qidi.QidiSettings
+import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +40,9 @@ fun SettingsScreen(
     onLoggingChange: (Boolean) -> Unit,
     onAlertsChange: (Boolean) -> Unit,
     onScreenOffOnlyChange: (Boolean) -> Unit,
+    onBrightnessFloorEnabledChange: (Boolean) -> Unit,
+    onBrightnessFloorPreview: suspend (Float) -> Unit,
+    onBrightnessFloorChange: (Float) -> Unit,
     onDeleteLog: () -> Unit
 ) {
     val colors = QidiTheme.colors
@@ -101,6 +115,23 @@ fun SettingsScreen(
                         checked = state.screenOffOnly,
                         onCheckedChange = onScreenOffOnlyChange
                     )
+
+                    SettingRow(
+                        label = "Raise minimum auto-brightness",
+                        subtitle = "In a dark room auto-brightness can drop the screen to its " +
+                            "dimmest level. Keeps it at least as bright as the level below. " +
+                            "Moving the brightness slider yourself still wins.",
+                        checked = state.brightnessFloorEnabled,
+                        onCheckedChange = onBrightnessFloorEnabledChange
+                    )
+
+                    if (state.brightnessFloorEnabled) {
+                        BrightnessFloorSlider(
+                            saved = state.brightnessFloor,
+                            onPreview = onBrightnessFloorPreview,
+                            onChange = onBrightnessFloorChange
+                        )
+                    }
                 }
             }
 
@@ -123,6 +154,72 @@ fun SettingsScreen(
         }
     }
 }
+
+/** 0–25 % of the brightness range. Previews while dragging, saves on release. */
+@Composable
+private fun BrightnessFloorSlider(
+    saved: Float,
+    onPreview: suspend (Float) -> Unit,
+    onChange: (Float) -> Unit
+) {
+    val colors = QidiTheme.colors
+    var level by remember(saved) { mutableFloatStateOf(saved) }
+    var dragging by remember { mutableStateOf(false) }
+
+    LaunchedEffect(level, dragging) {
+        if (!dragging) return@LaunchedEffect
+        delay(PREVIEW_DEBOUNCE_MS)
+        onPreview(level)
+    }
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp)
+            .padding(bottom = 12.dp)
+            .clip(RoundedCornerShape(Dimens.radiusInset))
+            .background(colors.elevated)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "Minimum brightness",
+                style = QidiTheme.type.secondary,
+                color = colors.text,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                "${(level * 100).roundToInt()} %",
+                style = QidiTheme.type.secondary,
+                color = colors.text
+            )
+        }
+        Slider(
+            value = level,
+            onValueChange = {
+                dragging = true
+                level = it
+            },
+            onValueChangeFinished = {
+                onChange(level)
+                dragging = false
+            },
+            valueRange = 0f..QidiSettings.BRIGHTNESS_FLOOR_MAX,
+            colors = SliderDefaults.colors(
+                thumbColor = colors.accent,
+                activeTrackColor = colors.accent,
+                inactiveTrackColor = colors.divider
+            )
+        )
+        Text(
+            "Tune it at night in the dark: the screen previews the level as you drag.",
+            style = QidiTheme.type.secondary,
+            color = colors.muted
+        )
+    }
+}
+
+private const val PREVIEW_DEBOUNCE_MS = 150L
 
 @Composable
 private fun SettingRow(

@@ -15,6 +15,12 @@ object QidiSettings {
     private const val RECOVERED_AT_KEY = "self_recovered_at"
     private const val RECOVERED_SEEN_KEY = "self_recovered_seen"
     private const val INSTALLED_AT_KEY = "installed_at"
+    private const val BRIGHTNESS_FLOOR_ENABLED_KEY = "brightness_floor_enabled"
+    private const val BRIGHTNESS_FLOOR_KEY = "brightness_floor"
+
+    /** Upper end of the brightness floor slider, as a fraction of the brightness range. */
+    const val BRIGHTNESS_FLOOR_MAX = 0.25f
+    private const val BRIGHTNESS_FLOOR_DEFAULT = 0.15f
 
     private const val DAY_MS = 24 * 60 * 60 * 1000L
 
@@ -40,6 +46,26 @@ object QidiSettings {
     fun setScreenOffOnly(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(SCREEN_OFF_ONLY_KEY, enabled).commit()
         QidiLogFiles.syncVisibleLaunch(context)
+    }
+
+    /** Off by default: raising the auto-brightness floor is opt-in. */
+    fun isBrightnessFloorEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(BRIGHTNESS_FLOOR_ENABLED_KEY, false)
+
+    fun setBrightnessFloorEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(BRIGHTNESS_FLOOR_ENABLED_KEY, enabled).commit()
+        QidiLogFiles.syncBrightnessFloor(context)
+    }
+
+    fun brightnessFloor(context: Context): Float =
+        prefs(context).getFloat(BRIGHTNESS_FLOOR_KEY, BRIGHTNESS_FLOOR_DEFAULT)
+            .coerceIn(0f, BRIGHTNESS_FLOOR_MAX)
+
+    fun setBrightnessFloor(context: Context, floor: Float) {
+        prefs(context).edit()
+            .putFloat(BRIGHTNESS_FLOOR_KEY, floor.coerceIn(0f, BRIGHTNESS_FLOOR_MAX))
+            .commit()
+        QidiLogFiles.syncBrightnessFloor(context)
     }
 
     fun recordRecovery(context: Context, at: Long = System.currentTimeMillis()) {

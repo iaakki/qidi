@@ -121,6 +121,13 @@ there too.
   - Recovery over adb: run `libshizuku.so` with its output redirected (otherwise adb hangs),
     then `am start -n app.qidi/.MainActivity`.
 
+- **Brightness floor (v0.4.0, opt-in):** Settings → "Raise minimum auto-brightness" plus a
+  0–25 % slider (live preview). Qidi writes the level to
+  `/sdcard/Android/data/app.qidi/files/brightness-floor`. The sentinel
+  (`enforce_brightness_floor`, every 30 s) and the watchdog (1.5 s after screen-on, via
+  `qidi-sentinel.sh floor`) apply it with `cmd display set-brightness`, but only when auto mode
+  is on, the screen is on, `mUserBrightness=NaN` and auto chose less than the floor.
+
 ## Status (2026-11-13)
 
 Qidi has been running on the owner's phone for about two months and works well. The next step

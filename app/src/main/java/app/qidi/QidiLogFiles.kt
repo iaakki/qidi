@@ -2,6 +2,7 @@ package app.qidi
 
 import android.content.Context
 import java.io.File
+import java.util.Locale
 
 /**
  * Where Qidi keeps its diagnostic logs and the sentinel's marker files: app-specific external
@@ -20,6 +21,12 @@ object QidiLogFiles {
      * may launch an app visibly while the screen is on instead of deferring it.
      */
     const val VISIBLE_LAUNCH_MARKER = "allow-visible-launch"
+
+    /**
+     * Holds the auto-brightness floor (0.000–0.250) while the feature is enabled; the sentinel
+     * enforces it. Absent means disabled.
+     */
+    const val BRIGHTNESS_FLOOR_FILE = "brightness-floor"
 
     fun file(context: Context, name: String): File = File(dir(context), name)
 
@@ -49,6 +56,18 @@ object QidiLogFiles {
         val marker = file(context, VISIBLE_LAUNCH_MARKER)
         if (marker.exists() == allowed) return
         runCatching { if (allowed) marker.writeText("") else marker.delete() }
+    }
+
+    /** Makes the sentinel's floor file match the settings; cheap when nothing changed. */
+    fun syncBrightnessFloor(context: Context) {
+        val file = file(context, BRIGHTNESS_FLOOR_FILE)
+        if (!QidiSettings.isBrightnessFloorEnabled(context)) {
+            if (file.exists()) runCatching { file.delete() }
+            return
+        }
+        val wanted = String.format(Locale.US, "%.3f", QidiSettings.brightnessFloor(context))
+        if (runCatching { file.readText().trim() }.getOrNull() == wanted) return
+        runCatching { file.writeText(wanted) }
     }
 
     private fun dir(context: Context): File = context.getExternalFilesDir(null) ?: context.filesDir

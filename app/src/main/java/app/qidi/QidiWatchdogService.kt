@@ -5,7 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
@@ -34,10 +37,25 @@ class QidiWatchdogService : Service() {
     private val lastKnownRunning = mutableMapOf<String, Boolean>()
     private val lastLoggedState = mutableMapOf<String, String>()
 
+    /** Applies the brightness floor right after screen-on instead of at the next sentinel cycle. */
+    private val screenOnReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action != Intent.ACTION_SCREEN_ON) return
+            if (!QidiSettings.isBrightnessFloorEnabled(context) || executor.isShutdown) return
+            // Give auto-brightness a moment to read the light sensor first.
+            executor.schedule(
+                { ShizukuShell.run(QidiCommands.enforceBrightnessFloorCommand()) },
+                SCREEN_ON_FLOOR_DELAY_MS,
+                TimeUnit.MILLISECONDS
+            )
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         executor = Executors.newSingleThreadScheduledExecutor()
         createNotificationChannel()
+        registerReceiver(screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
         QidiEventLog.append(this, "Watchdog service created.")
     }
 
@@ -72,6 +90,7 @@ class QidiWatchdogService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        runCatching { unregisterReceiver(screenOnReceiver) }
         watchdogTask?.cancel(true)
         executor.shutdownNow()
         if (QidiSettings.isWatchdogEnabled(this)) QidiWatchdogScheduler.scheduleRecoveryAlarm(this)
@@ -127,6 +146,7 @@ class QidiWatchdogService : Service() {
         }
         val screenAwake = screenProbe == "true"
         QidiLogFiles.syncVisibleLaunch(this)
+        QidiLogFiles.syncBrightnessFloor(this)
         val mayLaunchVisibly = !QidiSettings.isScreenOffOnly(this)
 
         val sentinelMissing =
@@ -375,6 +395,7 @@ class QidiWatchdogService : Service() {
         private const val FIELD_LOG_VALUE_LIMIT = 700
         private const val BINDER_MARKER_AFTER_MS = 30_000L
         private const val SHIZUKU_ALERT_AFTER_MS = 120_000L
+        private const val SCREEN_ON_FLOOR_DELAY_MS = 1_500L
         private val PACKAGE_NAME_PATTERN = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
     }
 }

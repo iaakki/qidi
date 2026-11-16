@@ -43,6 +43,8 @@ data class QidiUiState(
     val loggingEnabled: Boolean = true,
     val alertsEnabled: Boolean = true,
     val screenOffOnly: Boolean = true,
+    val brightnessFloorEnabled: Boolean = false,
+    val brightnessFloor: Float = 0.15f,
     val loading: Boolean = true
 ) {
     val protectedApps: List<AppEntry> get() = apps.filter { it.isProtected }
@@ -167,6 +169,8 @@ object QidiStateLoader {
             loggingEnabled = QidiSettings.isLoggingEnabled(context),
             alertsEnabled = QidiSettings.areAlertsEnabled(context),
             screenOffOnly = QidiSettings.isScreenOffOnly(context),
+            brightnessFloorEnabled = QidiSettings.isBrightnessFloorEnabled(context),
+            brightnessFloor = QidiSettings.brightnessFloor(context),
             loading = false
         )
     }

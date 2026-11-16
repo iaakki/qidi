@@ -131,6 +131,25 @@ fun QidiApp() {
                         QidiSettings.setScreenOffOnly(context, it)
                         refresh()
                     },
+                    onBrightnessFloorEnabledChange = { enabled ->
+                        QidiSettings.setBrightnessFloorEnabled(context, enabled)
+                        if (enabled) {
+                            val level = QidiSettings.brightnessFloor(context)
+                            scope.launch(Dispatchers.IO) {
+                                ShizukuShell.run(QidiCommands.previewBrightnessCommand(level))
+                            }
+                        }
+                        refresh()
+                    },
+                    onBrightnessFloorPreview = { level ->
+                        withContext(Dispatchers.IO) {
+                            ShizukuShell.run(QidiCommands.previewBrightnessCommand(level))
+                        }
+                    },
+                    onBrightnessFloorChange = { level ->
+                        QidiSettings.setBrightnessFloor(context, level)
+                        refresh()
+                    },
                     onDeleteLog = {
                         QidiEventLog.clear(context)
                         QidiFieldLog.clear(context)

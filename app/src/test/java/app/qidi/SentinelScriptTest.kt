@@ -92,4 +92,69 @@ class SentinelScriptTest {
     fun lastExitWithoutRecords() {
         assertEquals("no exit record", lastExit("ACTIVITY MANAGER PROCESS EXIT INFO\n", "com.example.none"))
     }
+
+    // ---- brightness floor ----
+
+    private fun floor(floorValue: String?, display: String, mode: String = "1", awake: Boolean = true): String {
+        val function = Regex("(?ms)^enforce_brightness_floor\\(\\) \\{.*?^}$").find(script)!!.value
+        val dir = createTempDir("qidi-floor")
+        try {
+            val floorFile = File(dir, "brightness-floor")
+            if (floorValue != null) floorFile.writeText(floorValue)
+            val displayFile = File(dir, "display.txt").apply { writeText(display) }
+            val (_, output) = sh(
+                input = """
+                    FLOOR_FILE='${floorFile.absolutePath}'
+                    settings() { echo '$mode'; }
+                    screen_awake() { ${if (awake) "true" else "false"}; }
+                    dumpsys() { cat '${displayFile.absolutePath}'; }
+                    cmd() { echo "CMD ＄*" >> '${File(dir, "calls").absolutePath}'; }
+                    log() { echo "LOG ＄1" >> '${File(dir, "calls").absolutePath}'; }
+                    $function
+                    enforce_brightness_floor
+                    cat '${File(dir, "calls").absolutePath}' 2>/dev/null
+                """.trimIndent().replace('＄', '$') + "\n"
+            )
+            return output.trim()
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    private fun display(user: String, auto: String) = """
+          mScreenAutoBrightness=$auto
+          SimpleMappingStrategy
+            mAutoBrightnessAdjustment=0.0
+            mUserLux=-1.0
+            mUserBrightness=$user
+          Mapper for mode idle:
+            mUserBrightness=0.9
+    """.trimIndent()
+
+    @Test
+    fun floorRaisesDarkAutoBrightness() {
+        assertEquals(
+            "CMD display set-brightness 0.150\nLOG brightness floor 0.150 applied (auto chose 0.0)",
+            floor("0.150", display(user = "NaN", auto = "0.0"))
+        )
+    }
+
+    @Test
+    fun floorRespectsUserBrightness() {
+        assertEquals("", floor("0.150", display(user = "0.05", auto = "0.0")))
+    }
+
+    @Test
+    fun floorLeavesBrighterAutoAlone() {
+        assertEquals("", floor("0.150", display(user = "NaN", auto = "0.3")))
+    }
+
+    @Test
+    fun floorNeedsFileAutoModeAndScreenOn() {
+        val dark = display(user = "NaN", auto = "0.0")
+        assertEquals("", floor(null, dark))
+        assertEquals("", floor("0.150", dark, mode = "0"))
+        assertEquals("", floor("0.150", dark, awake = false))
+        assertEquals("", floor("1.5", dark))
+    }
 }
