@@ -31,6 +31,11 @@ needs on top of it. If the two disagree, check the code, then fix whichever file
   Shizuku's binder cannot be tested off-device: binder changes exception types (that is what
   broke v0.3.1). Changes to shell logic should be dry-run on the device with `adb shell`
   before being baked into the script.
+- **Installing over adb:** Play Protect shows a "send app for scanning?" prompt, and
+  `adb install` blocks until the owner answers it. An install that was abandoned can still go
+  through later and overwrite a newer build: on 2026-11-16 a stale v0.3.6 install replaced
+  v0.4.0 ten minutes after it was installed. Make sure no `adb install` is left running, and
+  re-check `versionName` a few minutes after installing.
 - Commit only when asked. Branch off `main` first.
 
 ## Getting logs off the phone
