@@ -293,7 +293,7 @@ Each of these was confirmed on the device.
   then v0.3.3–v0.3.5 diagnostics and restart fixes.
 - The device runs a **signed release** build, so `run-as` is unavailable there.
 - Broken releases (v0.2.0 debug-signed; v0.3.0, v0.3.1, v0.3.3, v0.3.4) were deleted from
-  GitHub on 2026-11-16. Their tags remain. Good releases: v0.2.1, v0.3.2, v0.3.5, v0.3.6.
+  GitHub on 2026-11-16, tags included. Good releases: v0.2.1, v0.3.2, v0.3.5, v0.3.6.
 - The expanded notification layout from the design handoff (per-app status dots, "Recover now"
   action) is **not implemented**; only the collapsed form exists.
 - There is no CI build check on pull requests, only the release workflow.
