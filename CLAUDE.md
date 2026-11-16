@@ -112,6 +112,15 @@ there too.
 - Most sentinel restarts answer `TOO MANY EMPTY PROCS` (normal cached-process trimming). They
   ping-pong every 20–30 min and achieve nothing.
 
+- **Leak fix confirmed (2026-11-16):** after v0.3.2, `shizuku_server` ran about 45 h without
+  a restart (from 11-13 16:21 until the phone went down 11-15 ~10:00). Before, it died every ~8 h.
+- **Reboot gap:** after the 11-15 13:35 boot nothing came back for ~20 h.
+  - Non-root Shizuku does not start on boot, and the sentinel is launched through Shizuku.
+  - Qidi's boot receiver never ran: no "Watchdog resume requested" line. The cause is
+    unconfirmed (possibly TCL auto-launch control); the boot logcat had rotated out by then.
+  - Recovery over adb: run `libshizuku.so` with its output redirected (otherwise adb hangs),
+    then `am start -n app.qidi/.MainActivity`.
+
 ## Status (2026-11-13)
 
 Qidi has been running on the owner's phone for about two months and works well. The next step
